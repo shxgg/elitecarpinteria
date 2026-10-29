@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { materialSamples, products as initialProducts } from '@/data/products';
-import { AdminPanel } from './components/AdminPanel';
+import { AdminPanel } from './components/admin/AdminPanel';
 import { supabase } from './supabase';
 
 export type CartItem = {
@@ -214,7 +214,7 @@ export default function App() {
         />
       )}
 
-      {/* DRAWER DEL CARRITO */}
+      {/* DRAWER DEL CARRITO DE COMPRAS */}
       {cartOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-charcoal/60 backdrop-blur-sm">
           <div className="flex h-full w-full max-w-md flex-col bg-bone p-6 shadow-2xl">
@@ -233,6 +233,7 @@ export default function App() {
                 <div className="flex h-full flex-col items-center justify-center text-center text-stone">
                   <ShoppingBag size={48} className="mb-3 stroke-1 text-stone/50" />
                   <p className="text-sm font-semibold">El carrito está vacío</p>
+                  <p className="text-xs text-stone/80 mt-1">Explorá nuestros muebles y agregá lo que te guste.</p>
                 </div>
               ) : (
                 cart.map((item) => (
@@ -242,15 +243,23 @@ export default function App() {
                       <div>
                         <div className="flex justify-between">
                           <h4 className="font-display text-base font-bold leading-tight">{item.name}</h4>
-                          <button onClick={() => removeFromCart(item.id)} className="text-stone hover:text-red-600"><Trash2 size={16} /></button>
+                          <button onClick={() => removeFromCart(item.id)} className="text-stone hover:text-red-600">
+                            <Trash2 size={16} />
+                          </button>
                         </div>
-                        <p className="text-xs font-bold text-wood mt-1">{item.price > 0 ? `$${item.price.toLocaleString('es-AR')}` : 'A consultar'}</p>
+                        <p className="text-xs font-bold text-wood mt-1">
+                          {item.price > 0 ? `$${item.price.toLocaleString('es-AR')}` : 'A consultar'}
+                        </p>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="flex items-center border border-charcoal/20 rounded bg-bone">
-                          <button onClick={() => updateQuantity(item.id, -1)} className="p-1 text-stone hover:text-charcoal"><Minus size={14} /></button>
+                          <button onClick={() => updateQuantity(item.id, -1)} className="p-1 text-stone hover:text-charcoal">
+                            <Minus size={14} />
+                          </button>
                           <span className="px-2 text-xs font-bold">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, 1)} className="p-1 text-stone hover:text-charcoal"><Plus size={14} /></button>
+                          <button onClick={() => updateQuantity(item.id, 1)} className="p-1 text-stone hover:text-charcoal">
+                            <Plus size={14} />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -263,7 +272,9 @@ export default function App() {
               <div className="border-t border-charcoal/10 pt-4 space-y-4">
                 <div className="flex justify-between items-center text-base font-bold">
                   <span>Total estimado:</span>
-                  <span className="text-xl text-charcoal">{totalCartPrice > 0 ? `$${totalCartPrice.toLocaleString('es-AR')}` : 'A consultar'}</span>
+                  <span className="text-xl text-charcoal">
+                    {totalCartPrice > 0 ? `$${totalCartPrice.toLocaleString('es-AR')}` : 'A consultar'}
+                  </span>
                 </div>
                 <button onClick={sendCartToWhatsApp} className="button-dark w-full justify-center py-4 text-xs font-bold uppercase tracking-wider">
                   Enviar Pedido por WhatsApp <MessageCircle size={18} />
@@ -362,6 +373,18 @@ function Header({ menuOpen, setMenuOpen, navigate, whatsappLink, cartCount, onOp
           </button>
         </div>
       </div>
+      {menuOpen && (
+        <div className="border-t border-charcoal/10 bg-bone px-5 py-5 lg:hidden">
+          <nav className="flex flex-col gap-5">
+            {links.map(([label, path]) => (
+              <button key={path} onClick={() => navigate(path)} className="text-left text-[11px] font-bold uppercase tracking-[0.16em]">{label}</button>
+            ))}
+            <a href={whatsappLink()} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-wood">
+              <MessageCircle size={16} /> Pedir presupuesto
+            </a>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
@@ -391,6 +414,34 @@ function Home({ navigate, products, settings, whatsappLink, addToCart }: { navig
   );
 }
 
+function ProductCard({ product, navigate, addToCart }: { product: any; navigate: (path: string) => void; addToCart: (p: any) => void }) {
+  const formattedPrice = product.price && product.price > 0 
+    ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(product.price)
+    : 'A consultar';
+
+  return (
+    <article className="group flex flex-col justify-between">
+      <div>
+        <button onClick={() => navigate(`/muebles/${product.id}`)} className="block w-full text-left">
+          <div className="relative aspect-[.88] overflow-hidden bg-stone-light">
+            <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          </div>
+          <div className="pt-4">
+            <div className="flex justify-between items-center">
+              <p className="text-[9px] font-bold uppercase tracking-[0.17em] text-wood">{product.category}</p>
+              <span className="text-xs font-bold text-charcoal">{formattedPrice}</span>
+            </div>
+            <h3 className="mt-2 font-display text-2xl">{product.name}</h3>
+          </div>
+        </button>
+      </div>
+      <button onClick={() => addToCart(product)} className="mt-4 flex items-center justify-center gap-2 border border-charcoal/20 py-2.5 text-[10px] font-bold uppercase tracking-[0.13em] text-charcoal hover:bg-charcoal hover:text-white transition-colors">
+        <Plus size={14} /> Agregar al Carrito
+      </button>
+    </article>
+  );
+}
+
 function FeaturedProducts({ navigate, products, addToCart }: { navigate: (path: string) => void; products: any[]; addToCart: (p: any) => void }) {
   return (
     <section className="bg-white px-5 py-20 lg:px-10 lg:py-28">
@@ -400,22 +451,7 @@ function FeaturedProducts({ navigate, products, addToCart }: { navigate: (path: 
         </div>
         <div className="mt-12 grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
           {products.slice(0, 4).map((product) => (
-            <article key={product.id} className="group flex flex-col justify-between">
-              <div>
-                <button onClick={() => navigate(`/muebles/${product.id}`)} className="block w-full text-left">
-                  <div className="relative aspect-[.88] overflow-hidden bg-stone-light">
-                    <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                  </div>
-                  <div className="pt-4">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.17em] text-wood">{product.category}</p>
-                    <h3 className="mt-2 font-display text-2xl">{product.name}</h3>
-                  </div>
-                </button>
-              </div>
-              <button onClick={() => addToCart(product)} className="mt-4 flex items-center justify-center gap-2 border border-charcoal/20 py-2.5 text-[10px] font-bold uppercase tracking-[0.13em] text-charcoal hover:bg-charcoal hover:text-white transition-colors">
-                <Plus size={14} /> Agregar al Carrito
-              </button>
-            </article>
+            <ProductCard key={product.id} product={product} navigate={navigate} addToCart={addToCart} />
           ))}
         </div>
       </div>
@@ -438,22 +474,7 @@ function Catalog({ navigate, products, categories, addToCart }: { navigate: (pat
         </div>
         <div className="grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
           {filtered.map((product) => (
-            <article key={product.id} className="group flex flex-col justify-between">
-              <div>
-                <button onClick={() => navigate(`/muebles/${product.id}`)} className="block w-full text-left">
-                  <div className="relative aspect-[.88] overflow-hidden bg-stone-light">
-                    <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
-                  </div>
-                  <div className="pt-4">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.17em] text-wood">{product.category}</p>
-                    <h3 className="mt-2 font-display text-2xl">{product.name}</h3>
-                  </div>
-                </button>
-              </div>
-              <button onClick={() => addToCart(product)} className="mt-4 flex items-center justify-center gap-2 border border-charcoal/20 py-2.5 text-[10px] font-bold uppercase tracking-[0.13em] text-charcoal hover:bg-charcoal hover:text-white transition-colors">
-                <Plus size={14} /> Agregar al Carrito
-              </button>
-            </article>
+            <ProductCard key={product.id} product={product} navigate={navigate} addToCart={addToCart} />
           ))}
         </div>
       </div>
@@ -462,6 +483,10 @@ function Catalog({ navigate, products, categories, addToCart }: { navigate: (pat
 }
 
 function ProductDetail({ product, navigate, whatsappLink, addToCart }: { product: any; navigate: (path: string) => void; whatsappLink: (msg?: string) => string; addToCart: (p: any) => void }) {
+  const formattedPrice = product.price && product.price > 0 
+    ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(product.price)
+    : 'Precio a consultar';
+
   return (
     <div className="bg-bone py-12 px-5 lg:px-10">
       <div className="mx-auto max-w-[1320px]">
@@ -473,9 +498,18 @@ function ProductDetail({ product, navigate, whatsappLink, addToCart }: { product
             <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
           </div>
           <div>
-            <h1 className="font-display text-4xl">{product.name}</h1>
-            <p className="mt-4 text-stone text-sm">{product.description}</p>
-            <button onClick={() => addToCart(product)} className="button-dark mt-8">Agregar al Carrito <Plus size={16} /></button>
+            <p className="eyebrow">{product.category}</p>
+            <h1 className="font-display text-4xl mt-2">{product.name}</h1>
+            <p className="text-2xl font-bold text-charcoal mt-3">{formattedPrice}</p>
+            <p className="mt-4 text-stone text-sm leading-relaxed">{product.description}</p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <button onClick={() => addToCart(product)} className="button-dark flex-1 justify-center">
+                <Plus size={16} /> Agregar al Carrito
+              </button>
+              <a href={whatsappLink(`Hola Elite, quisiera consultar por ${product.name} (${formattedPrice}).`)} target="_blank" rel="noreferrer" className="button-outline flex-1 justify-center">
+                Consultar por WhatsApp <MessageCircle size={16} />
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -490,6 +524,9 @@ function CustomMade({ settings, whatsappLink }: { settings: any; whatsappLink: (
         <h1 className="font-display text-4xl">{settings.custom_title}</h1>
         <p className="mt-4 text-stone max-w-2xl mx-auto">{settings.custom_text}</p>
         {settings.custom_image_url && <img src={settings.custom_image_url} alt="Muebles a medida" className="mt-10 w-full aspect-[16/9] object-cover rounded shadow-md" />}
+        <div className="mt-10">
+          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="button-dark inline-flex">Consultar por WhatsApp <MessageCircle size={16} /></a>
+        </div>
       </div>
     </div>
   );
@@ -502,6 +539,14 @@ function Materials({ settings }: { settings: any }) {
         <h1 className="font-display text-4xl">{settings.materials_title}</h1>
         <p className="mt-4 text-stone max-w-2xl mx-auto">{settings.materials_text}</p>
         {settings.materials_image_url && <img src={settings.materials_image_url} alt="Materiales" className="mt-10 w-full aspect-[16/9] object-cover rounded shadow-md" />}
+        <div className="mt-12 grid grid-cols-3 sm:grid-cols-6 gap-4">
+          {materialSamples.map((sample) => (
+            <div key={sample.name} className="text-center">
+              <div className="aspect-square border border-charcoal/10 rounded" style={{ backgroundColor: sample.value }} />
+              <p className="mt-2 text-[10px] font-semibold text-stone">{sample.name}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -512,29 +557,52 @@ function About({ navigate, settings }: { navigate: (path: string) => void; setti
     <div className="bg-bone py-20 px-5 lg:px-10">
       <div className="mx-auto max-w-4xl text-center">
         <h1 className="font-display text-4xl">{settings.about_title}</h1>
-        <p className="mt-6 text-stone">{settings.about_text}</p>
+        <p className="mt-6 text-stone leading-relaxed">{settings.about_text}</p>
         <div className="mt-8 aspect-[16/9] overflow-hidden rounded shadow-md max-w-2xl mx-auto">
           <img src={settings.about_image} alt="Nosotros" className="w-full h-full object-cover" />
         </div>
+        <button onClick={() => navigate('/a-medida')} className="button-dark mt-8 inline-flex">Hablemos de tu proyecto <ArrowRight size={16} /></button>
       </div>
     </div>
   );
 }
 
 function Contact({ settings, whatsappLink }: { settings: any; whatsappLink: (msg?: string) => string }) {
+  const [sent, setSent] = useState(false);
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const message = `Hola Elite, soy ${data.get('name')}.\nMi consulta: ${data.get('message')}`;
+    window.open(whatsappLink(message), '_blank', 'noopener,noreferrer');
+    setSent(true);
+  }
+
   return (
-    <div className="bg-white py-20 px-5 lg:px-10 text-center">
-      <h1 className="font-display text-4xl">{settings.contact_title}</h1>
-      <p className="mt-4">WhatsApp: {settings.phone}</p>
-      <p>Email: {settings.email}</p>
+    <div className="bg-white py-20 px-5 lg:px-10">
+      <div className="mx-auto max-w-3xl text-center">
+        <h1 className="font-display text-4xl">{settings.contact_title}</h1>
+        <p className="mt-2 text-stone">WhatsApp: {settings.phone} · Email: {settings.email}</p>
+        <form onSubmit={submit} className="mt-10 grid gap-6 bg-bone p-8 text-left rounded-lg shadow-sm">
+          <label className="block text-xs font-bold uppercase">
+            <span>Nombre</span>
+            <input name="name" placeholder="Tu nombre" required className="w-full border p-3 rounded mt-1 text-sm bg-white" />
+          </label>
+          <label className="block text-xs font-bold uppercase">
+            <span>Mensaje</span>
+            <textarea name="message" placeholder="¿En qué podemos ayudarte?" rows={4} required className="w-full border p-3 rounded mt-1 text-sm bg-white" />
+          </label>
+          <button type="submit" className="button-dark justify-center">{sent ? '¡Enviado!' : 'Enviar consulta'} <MessageCircle size={16} /></button>
+        </form>
+      </div>
     </div>
   );
 }
 
 function Footer({ navigate, settings }: { navigate: (path: string) => void; settings: any }) {
   return (
-    <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-16 text-white/70 text-center text-xs">
-      {settings.phone} · {settings.email}
+    <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-16 text-white/70 text-center text-xs space-y-2">
+      <p>{settings.phone} · {settings.email}</p>
+      <p className="text-white/40">Elite Carpintería de Origen © 2026. Todos los derechos reservados.</p>
     </footer>
   );
 }
