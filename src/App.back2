@@ -1,0 +1,867 @@
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Edit3,
+  Mail,
+  Menu,
+  MessageCircle,
+  Minus,
+  PenTool,
+  Plus,
+  Ruler,
+  ShoppingBag,
+  Sparkles,
+  Trash2,
+  Truck,
+  X,
+} from 'lucide-react';
+import { materialSamples, products as initialProducts } from '@/data/products';
+import { supabase } from './supabase';
+
+export type CartItem = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+};
+
+export default function App() {
+  const [route, setRoute] = useState<Route>(getRoute);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  
+  const [products, setProducts] = useState<any[]>(initialProducts);
+  const [categories, setCategories] = useState<string[]>(['Amoblamientos de cocina', 'Revestimientos', 'Placards', 'Muebles a medida']);
+  
+  const [settings, setSettings] = useState({
+    hero_title: 'Diseño de origen para espacios que viven con vos.',
+    phone: '+54 11 2408-9472',
+    email: 'matias@elitecarpinteria.com.ar',
+    whatsapp: '5491124089472',
+    favicon_url: '/logo.png',
+    logo_url: '/logo.png',
+    about_title: 'Un taller con los pies en el origen.',
+    about_text: 'Somos una carpintería argentina que trabaja con aglomerado y melamina.',
+    about_image: 'https://images.pexels.com/photos/7484794/pexels-photo-7484794.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    custom_title: 'Un mueble a medida empieza por escucharte.',
+    custom_text: 'Diseñamos cada pieza alrededor de tu espacio, tus hábitos y tu forma de usarlo.',
+    materials_title: 'Simple de elegir, fácil de cuidar.',
+    materials_text: 'Trabajamos principalmente con aglomerado y melamina.',
+    contact_title: 'Hablemos de tu espacio.',
+  });
+
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  const WHATSAPP_URL = `https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`;
+  const WHATSAPP_MESSAGE = 'Hola Elite, quisiera consultar por un mueble a medida.';
+  const whatsappLink = (message = WHATSAPP_MESSAGE) => `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`;
+
+  const addToCart = (product: any) => {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === product.id);
+      if (existing) {
+        return prev.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
+      }
+      return [...prev, { id: product.id, name: product.name, price: product.price || 0, quantity: 1, image: product.image }];
+    });
+    setCartOpen(true);
+  };
+
+  const updateQuantity = (id: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.id === id) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[]
+    );
+  };
+
+  const removeFromCart = (id: string) => {
+    setCart((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const totalCartPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const sendCartToWhatsApp = () => {
+    if (cart.length === 0) return;
+    let message = `🛒 *NUEVO PEDIDO DESDE LA WEB*\n\n`;
+    cart.forEach((item, index) => {
+      const itemPrice = item.price > 0 ? `$${(item.price * item.quantity).toLocaleString('es-AR')}` : 'A consultar';
+      message += `${index + 1}. *${item.name}* x${item.quantity} - ${itemPrice}\n`;
+    });
+    message += `\n💰 *Total Estimado:* ${totalCartPrice > 0 ? `$${totalCartPrice.toLocaleString('es-AR')}` : 'A consultar'}\n\n`;
+    message += `Hola Elite, quisiera coordinar la compra/presupuesto de estos productos.`;
+
+    window.open(whatsappLink(message), '_blank', 'noopener,noreferrer');
+  };
+
+  useEffect(() => {
+    async function fetchData() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        setIsAdminLoggedIn(true);
+      }
+
+      const { data: prodData } = await supabase.from('products').select('*');
+      if (prodData && prodData.length > 0) {
+        const formatted = prodData.map((item: any) => ({
+          id: item.id,
+          name: item.title,
+          description: item.description,
+          category: item.category,
+          kind: 'A medida',
+          image: item.image_url,
+          gallery: [item.image_url],
+          details: item.description,
+          referenceMeasures: 'A medida según espacio',
+          material: 'Melamina / Aglomerado',
+          colors: ['Blanco', 'Roble', 'Negro'],
+          price: item.price || 0,
+        }));
+        setProducts(formatted);
+      }
+
+      const { data: catData } = await supabase.from('categories').select('*');
+      if (catData && catData.length > 0) {
+        setCategories(catData.map((c: any) => c.name));
+      }
+
+      const { data: setmData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+      if (setmData) {
+        setSettings({
+          hero_title: setmData.hero_title || settings.hero_title,
+          phone: setmData.phone || settings.phone,
+          email: setmData.email || settings.email,
+          whatsapp: setmData.whatsapp || settings.whatsapp,
+          favicon_url: setmData.favicon_url || '/logo.png',
+          logo_url: setmData.logo_url || '/logo.png',
+          about_title: setmData.about_title || settings.about_title,
+          about_text: setmData.about_text || settings.about_text,
+          about_image: setmData.about_image || settings.about_image,
+          custom_title: setmData.custom_title || settings.custom_title,
+          custom_text: setmData.custom_text || settings.custom_text,
+          materials_title: setmData.materials_title || settings.materials_title,
+          materials_text: setmData.materials_text || settings.materials_text,
+          contact_title: setmData.contact_title || settings.contact_title,
+        });
+
+        if (setmData.favicon_url) {
+          let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'shortcut icon';
+            document.getElementsByTagName('head')[0].appendChild(link);
+          }
+          link.href = setmData.favicon_url;
+        }
+      }
+    }
+    fetchData();
+  }, [route]);
+
+  useEffect(() => {
+    const handlePopState = () => setRoute(getRoute());
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  function navigate(path: string) {
+    window.history.pushState({}, '', path);
+    setRoute(path as Route);
+    setMenuOpen(false);
+  }
+
+  const cartTotalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <div className="min-h-screen bg-bone text-charcoal relative">
+      {isAdminLoggedIn && route !== '/admin' && (
+        <div className="bg-wood text-white px-4 py-2 flex justify-between items-center text-xs sticky top-0 z-50 shadow-md">
+          <span className="font-bold flex items-center gap-1.5"><Sparkles size={14} /> Modo Edición Activo</span>
+          <button onClick={() => navigate('/admin')} className="bg-charcoal text-white px-3 py-1 rounded font-bold uppercase text-[10px] hover:bg-black flex items-center gap-1">
+            <Edit3 size={12} /> Ir al Panel Admin completo
+          </button>
+        </div>
+      )}
+
+      {route !== '/admin' && <TopNotice />}
+      {route !== '/admin' && (
+        <Header
+          menuOpen={menuOpen}
+          setMenuOpen={setMenuOpen}
+          navigate={navigate}
+          whatsappLink={whatsappLink}
+          cartCount={cartTotalItems}
+          onOpenCart={() => setCartOpen(true)}
+          settings={settings}
+        />
+      )}
+
+      {/* DRAWER DEL CARRITO */}
+      {cartOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-charcoal/60 backdrop-blur-sm">
+          <div className="flex h-full w-full max-w-md flex-col bg-bone p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-charcoal/10 pb-4">
+              <div className="flex items-center gap-2">
+                <ShoppingBag size={20} className="text-wood" />
+                <h2 className="font-display text-2xl font-bold">Tu Pedido ({cartTotalItems})</h2>
+              </div>
+              <button onClick={() => setCartOpen(false)} className="rounded-full p-2 hover:bg-stone-light">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-4">
+              {cart.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center text-center text-stone">
+                  <ShoppingBag size={48} className="mb-3 stroke-1 text-stone/50" />
+                  <p className="text-sm font-semibold">El carrito está vacío</p>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex gap-4 border-b border-charcoal/10 pb-4 bg-white p-3 rounded shadow-sm">
+                    <img src={item.image} alt={item.name} className="h-20 w-20 object-cover rounded shrink-0" />
+                    <div className="flex flex-1 flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between">
+                          <h4 className="font-display text-base font-bold leading-tight">{item.name}</h4>
+                          <button onClick={() => removeFromCart(item.id)} className="text-stone hover:text-red-600"><Trash2 size={16} /></button>
+                        </div>
+                        <p className="text-xs font-bold text-wood mt-1">{item.price > 0 ? `$${item.price.toLocaleString('es-AR')}` : 'A consultar'}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center border border-charcoal/20 rounded bg-bone">
+                          <button onClick={() => updateQuantity(item.id, -1)} className="p-1 text-stone hover:text-charcoal"><Minus size={14} /></button>
+                          <span className="px-2 text-xs font-bold">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, 1)} className="p-1 text-stone hover:text-charcoal"><Plus size={14} /></button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="border-t border-charcoal/10 pt-4 space-y-4">
+                <div className="flex justify-between items-center text-base font-bold">
+                  <span>Total estimado:</span>
+                  <span className="text-xl text-charcoal">{totalCartPrice > 0 ? `$${totalCartPrice.toLocaleString('es-AR')}` : 'A consultar'}</span>
+                </div>
+                <button onClick={sendCartToWhatsApp} className="button-dark w-full justify-center py-4 text-xs font-bold uppercase tracking-wider">
+                  Enviar Pedido por WhatsApp <MessageCircle size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <main>
+        {route === '/' && <Home navigate={navigate} products={products} settings={settings} whatsappLink={whatsappLink} addToCart={addToCart} />}
+        {route === '/muebles' && <Catalog navigate={navigate} products={products} categories={categories} addToCart={addToCart} />}
+        {route.startsWith('/muebles/') && (
+          <ProductDetail
+            product={products.find((item) => `/muebles/${item.id}` === route) ?? products[0]}
+            navigate={navigate}
+            whatsappLink={whatsappLink}
+            addToCart={addToCart}
+          />
+        )}
+        {route === '/a-medida' && <CustomMade settings={settings} whatsappLink={whatsappLink} />}
+        {route === '/materiales' && <Materials settings={settings} />}
+        {route === '/nosotros' && <About navigate={navigate} settings={settings} />}
+        {route === '/contacto' && <Contact settings={settings} whatsappLink={whatsappLink} />}
+        {route === '/admin' && <Admin navigate={navigate} categories={categories} onCategoryAdded={() => window.location.reload()} />}
+      </main>
+
+      {route !== '/admin' && <Footer navigate={navigate} settings={settings} />}
+      {route !== '/admin' && <WhatsAppButton whatsappLink={whatsappLink} />}
+    </div>
+  );
+}
+
+type Route = '/' | '/muebles' | '/a-medida' | '/materiales' | '/nosotros' | '/contacto' | '/admin' | `/muebles/${string}`;
+
+function getRoute(): Route {
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  if (path === '/admin') return '/admin';
+  if (path.startsWith('/muebles/')) return path as Route;
+  if (['/', '/muebles', '/a-medida', '/materiales', '/nosotros', '/contacto', '/admin'].includes(path)) return path as Route;
+  return '/';
+}
+
+function TopNotice() {
+  return <div className="bg-charcoal px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-white/75">Fabricación propia <span className="mx-2 text-wood">·</span> Muebles a medida <span className="mx-2 text-wood">·</span> Envíos a todo el país</div>;
+}
+
+type HeaderProps = {
+  menuOpen: boolean;
+  setMenuOpen: (value: boolean) => void;
+  navigate: (path: string) => void;
+  whatsappLink: () => string;
+  cartCount: number;
+  onOpenCart: () => void;
+  settings: any;
+};
+
+function Header({ menuOpen, setMenuOpen, navigate, whatsappLink, cartCount, onOpenCart, settings }: HeaderProps) {
+  const links = [['Muebles', '/muebles'], ['A medida', '/a-medida'], ['Materiales', '/materiales'], ['Nosotros', '/nosotros'], ['Contacto', '/contacto']];
+  return (
+    <header className="sticky top-0 z-40 border-b border-charcoal/10 bg-bone/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1320px] items-center justify-between px-5 py-4 lg:px-10">
+        <button onClick={() => navigate('/')} className="group text-left" aria-label="Ir al inicio">
+          <img src={settings.logo_url || '/logo.png'} alt="Elite | Carpintería de Origen" className="h-16 w-32 object-contain object-left bg-transparent" />
+        </button>
+        <nav className="hidden items-center gap-7 lg:flex">
+          {links.map(([label, path]) => (
+            <button key={path} onClick={() => navigate(path)} className="text-[11px] font-semibold uppercase tracking-[0.14em] text-charcoal/65 transition-colors hover:text-wood">
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="flex items-center gap-3">
+          <button onClick={onOpenCart} className="relative flex items-center gap-2 border border-charcoal/15 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-charcoal hover:bg-stone-light">
+            <ShoppingBag size={18} />
+            <span className="hidden sm:inline">Carrito</span>
+            {cartCount > 0 && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-wood text-[10px] text-white">{cartCount}</span>}
+          </button>
+          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="hidden items-center gap-2 bg-wood px-4 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-charcoal sm:flex">
+            Pedir presupuesto <ArrowUpRight size={14} />
+          </a>
+          <button onClick={() => setMenuOpen(!menuOpen)} className="rounded-full border border-charcoal/15 p-2 lg:hidden" aria-label="Abrir menú">
+            {menuOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Home({ navigate, products, settings, whatsappLink, addToCart }: { navigate: (path: string) => void; products: any[]; settings: any; whatsappLink: (msg?: string) => string; addToCart: (product: any) => void }) {
+  return (
+    <>
+      <section className="relative min-h-[680px] overflow-hidden bg-charcoal text-white lg:min-h-[calc(100vh-74px)]">
+        <img src="/WhatsApp_Image_2026-10-28_at_10.46.54_(2).jpeg" alt="Mueble de living" className="absolute inset-0 h-full w-full object-cover opacity-75" />
+        <div className="absolute inset-0 bg-gradient-to-r from-charcoal via-charcoal/55 to-charcoal/10" />
+        <div className="relative mx-auto flex min-h-[680px] max-w-[1320px] items-end px-5 pb-20 pt-24 lg:min-h-[calc(100vh-74px)] lg:px-10 lg:pb-28">
+          <div className="max-w-[720px] animate-rise">
+            <p className="eyebrow text-wood-light">Elite <span className="mx-2 text-white/40">/</span> Diseño de origen</p>
+            <h1 className="mt-6 font-display text-5xl leading-[.96] tracking-[-.045em] sm:text-7xl lg:text-[7rem]">
+              Diseño de origen<br /><em className="text-wood-light">{settings.hero_title}</em>
+            </h1>
+            <p className="mt-8 max-w-[430px] text-base leading-7 text-white/75">Diseñamos y fabricamos muebles en aglomerado y melamina para que tu casa tenga exactamente lo que necesitás.</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <button onClick={() => navigate('/muebles')} className="button-primary">Ver muebles <ArrowRight size={16} /></button>
+              <a href={whatsappLink()} target="_blank" rel="noreferrer" className="button-outline">Cotizá por WhatsApp <MessageCircle size={16} /></a>
+            </div>
+          </div>
+        </div>
+      </section>
+      <FeaturedProducts navigate={navigate} products={products} addToCart={addToCart} />
+    </>
+  );
+}
+
+function FeaturedProducts({ navigate, products, addToCart }: { navigate: (path: string) => void; products: any[]; addToCart: (p: any) => void }) {
+  return (
+    <section className="bg-white px-5 py-20 lg:px-10 lg:py-28">
+      <div className="mx-auto max-w-[1320px]">
+        <div className="flex justify-between items-end">
+          <div><p className="eyebrow">01 / Muebles destacados</p><h2 className="section-title mt-4">Diseñados para <em>quedarse.</em></h2></div>
+        </div>
+        <div className="mt-12 grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
+          {products.slice(0, 4).map((product) => (
+            <article key={product.id} className="group flex flex-col justify-between">
+              <div>
+                <button onClick={() => navigate(`/muebles/${product.id}`)} className="block w-full text-left">
+                  <div className="relative aspect-[.88] overflow-hidden bg-stone-light">
+                    <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  </div>
+                  <div className="pt-4">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.17em] text-wood">{product.category}</p>
+                    <h3 className="mt-2 font-display text-2xl">{product.name}</h3>
+                  </div>
+                </button>
+              </div>
+              <button onClick={() => addToCart(product)} className="mt-4 flex items-center justify-center gap-2 border border-charcoal/20 py-2.5 text-[10px] font-bold uppercase tracking-[0.13em] text-charcoal hover:bg-charcoal hover:text-white transition-colors">
+                <Plus size={14} /> Agregar al Carrito
+              </button>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Catalog({ navigate, products, categories, addToCart }: { navigate: (path: string) => void; products: any[]; categories: string[]; addToCart: (p: any) => void }) {
+  const [filter, setFilter] = useState<string>('Todos');
+  const filtered = useMemo(() => filter === 'Todos' ? products : products.filter((product) => product.category === filter), [filter, products]);
+  return (
+    <div className="bg-white px-5 py-20 lg:px-10">
+      <div className="mx-auto max-w-[1320px]">
+        <div className="flex gap-2 overflow-x-auto border-b border-charcoal/15 pb-3 mb-10">
+          {['Todos', ...categories].map((category) => (
+            <button key={category} onClick={() => setFilter(category)} className={`whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase tracking-[0.13em] ${filter === category ? 'border-b-2 border-wood text-wood' : 'text-stone hover:text-charcoal'}`}>
+              {category}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
+          {filtered.map((product) => (
+            <article key={product.id} className="group flex flex-col justify-between">
+              <div>
+                <button onClick={() => navigate(`/muebles/${product.id}`)} className="block w-full text-left">
+                  <div className="relative aspect-[.88] overflow-hidden bg-stone-light">
+                    <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                  </div>
+                  <div className="pt-4">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.17em] text-wood">{product.category}</p>
+                    <h3 className="mt-2 font-display text-2xl">{product.name}</h3>
+                  </div>
+                </button>
+              </div>
+              <button onClick={() => addToCart(product)} className="mt-4 flex items-center justify-center gap-2 border border-charcoal/20 py-2.5 text-[10px] font-bold uppercase tracking-[0.13em] text-charcoal hover:bg-charcoal hover:text-white transition-colors">
+                <Plus size={14} /> Agregar al Carrito
+              </button>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductDetail({ product, navigate, whatsappLink, addToCart }: { product: any; navigate: (path: string) => void; whatsappLink: (msg?: string) => string; addToCart: (p: any) => void }) {
+  return (
+    <div className="bg-bone py-12 px-5 lg:px-10">
+      <div className="mx-auto max-w-[1320px]">
+        <button onClick={() => navigate('/muebles')} className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-stone hover:text-wood">
+          <ArrowLeft size={14} /> Volver a muebles
+        </button>
+        <div className="grid gap-10 lg:grid-cols-2">
+          <div className="aspect-[1.3] bg-stone-light overflow-hidden">
+            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <h1 className="font-display text-4xl">{product.name}</h1>
+            <p className="mt-4 text-stone text-sm">{product.description}</p>
+            <button onClick={() => addToCart(product)} className="button-dark mt-8">Agregar al Carrito <Plus size={16} /></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomMade({ settings, whatsappLink }: { settings: any; whatsappLink: (msg?: string) => string }) {
+  return (
+    <div className="bg-bone py-20 px-5 lg:px-10">
+      <div className="mx-auto max-w-4xl text-center">
+        <h1 className="font-display text-4xl">{settings.custom_title}</h1>
+        <p className="mt-4 text-stone">{settings.custom_text}</p>
+      </div>
+    </div>
+  );
+}
+
+function Materials({ settings }: { settings: any }) {
+  return (
+    <div className="bg-white py-20 px-5 lg:px-10">
+      <div className="mx-auto max-w-4xl text-center">
+        <h1 className="font-display text-4xl">{settings.materials_title}</h1>
+        <p className="mt-4 text-stone">{settings.materials_text}</p>
+      </div>
+    </div>
+  );
+}
+
+function About({ navigate, settings }: { navigate: (path: string) => void; settings: any }) {
+  return (
+    <div className="bg-bone py-20 px-5 lg:px-10">
+      <div className="mx-auto max-w-4xl text-center">
+        <h1 className="font-display text-4xl">{settings.about_title}</h1>
+        <p className="mt-6 text-stone">{settings.about_text}</p>
+        <div className="mt-8 aspect-[16/9] overflow-hidden rounded shadow-md max-w-2xl mx-auto">
+          <img src={settings.about_image} alt="Nosotros" className="w-full h-full object-cover" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Contact({ settings, whatsappLink }: { settings: any; whatsappLink: (msg?: string) => string }) {
+  return (
+    <div className="bg-white py-20 px-5 lg:px-10 text-center">
+      <h1 className="font-display text-4xl">{settings.contact_title}</h1>
+      <p className="mt-4">WhatsApp: {settings.phone}</p>
+      <p>Email: {settings.email}</p>
+    </div>
+  );
+}
+
+function Footer({ navigate, settings }: { navigate: (path: string) => void; settings: any }) {
+  return (
+    <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-16 text-white/70 text-center text-xs">
+      {settings.phone} · {settings.email}
+    </footer>
+  );
+}
+
+function WhatsAppButton({ whatsappLink }: { whatsappLink: (msg?: string) => string }) {
+  return (
+    <a href={whatsappLink()} target="_blank" rel="noreferrer" aria-label="WhatsApp" className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg">
+      <MessageCircle size={26} />
+    </a>
+  );
+}
+
+// ----------------------------------------------------
+// PANEL ADMIN MULTISECCIÓN CON PREVISUALIZACIONES INTERACTIVAS
+// ----------------------------------------------------
+function Admin({ navigate, categories, onCategoryAdded }: { navigate: (path: string) => void; categories: string[]; onCategoryAdded: () => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [category, setCategory] = useState(categories[0] || 'Amoblamientos de cocina');
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [dbProducts, setDbProducts] = useState<any[]>([]);
+
+  const [newCatName, setNewCatName] = useState('');
+
+  // Parametrización completa de todas las secciones
+  const [heroTitle, setHeroTitle] = useState('');
+  const [phone, setPhone] = useState('');
+  const [siteEmail, setSiteEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  
+  const [aboutTitle, setAboutTitle] = useState('');
+  const [aboutText, setAboutText] = useState('');
+  const [aboutImageFile, setAboutImageFile] = useState<File | null>(null);
+  const [aboutImagePreview, setAboutImagePreview] = useState<string>('');
+  
+  const [customTitle, setCustomTitle] = useState('');
+  const [customText, setCustomText] = useState('');
+
+  const [materialsTitle, setMaterialsTitle] = useState('');
+  const [materialsText, setMaterialsText] = useState('');
+
+  const [contactTitle, setContactTitle] = useState('');
+
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string>('');
+
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+
+  const loadData = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session) {
+      setUser(sessionData.session.user);
+    }
+
+    const { data: prodData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (prodData) setDbProducts(prodData);
+
+    const { data: setmData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+    if (setmData) {
+      setHeroTitle(setmData.hero_title || '');
+      setPhone(setmData.phone || '');
+      setSiteEmail(setmData.email || '');
+      setWhatsapp(setmData.whatsapp || '');
+      setAboutTitle(setmData.about_title || '');
+      setAboutText(setmData.about_text || '');
+      if (setmData.about_image) setAboutImagePreview(setmData.about_image);
+      if (setmData.favicon_url) setFaviconPreview(setmData.favicon_url);
+      if (setmData.logo_url) setLogoPreview(setmData.logo_url);
+      
+      setCustomTitle(setmData.custom_title || '');
+      setCustomText(setmData.custom_text || '');
+      setMaterialsTitle(setmData.materials_title || '');
+      setMaterialsText(setmData.materials_text || '');
+      setContactTitle(setmData.contact_title || '');
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    setFile(selectedFile);
+    if (selectedFile) setPreviewUrl(URL.createObjectURL(selectedFile));
+  };
+
+  const handleFaviconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
+    setFaviconFile(selected);
+    if (selected) setFaviconPreview(URL.createObjectURL(selected));
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
+    setLogoFile(selected);
+    if (selected) setLogoPreview(URL.createObjectURL(selected));
+  };
+
+  const handleAboutImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
+    setAboutImageFile(selected);
+    if (selected) setAboutImagePreview(URL.createObjectURL(selected));
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert('Error: ' + error.message);
+    else {
+      setUser(data.user);
+      loadData();
+    }
+    setLoading(false);
+  };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    const { error } = await supabase.from('categories').insert([{ name: newCatName.trim() }]);
+    if (error) alert('Error: ' + error.message);
+    else { alert('¡Categoría creada!'); setNewCatName(''); onCategoryAdded(); }
+  };
+
+  const handleUploadProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) return alert('Seleccioná una imagen');
+    setLoading(true);
+    const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
+    const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
+    if (uploadError) return alert('Error subiendo imagen: ' + uploadError.message);
+
+    const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName);
+    const { error: insertError } = await supabase.from('products').insert([
+      { title, description, price: price ? parseFloat(price) : 0, category, image_url: urlData.publicUrl },
+    ]);
+
+    if (insertError) alert('Error guardando mueble: ' + insertError.message);
+    else { alert('¡Mueble subido!'); setTitle(''); setDescription(''); setPrice(''); setFile(null); setPreviewUrl(''); loadData(); }
+    setLoading(false);
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('¿Seguro que querés eliminar este mueble?')) return;
+    await supabase.from('products').delete().eq('id', id);
+    loadData();
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    let uploadedFavicon = faviconPreview;
+    let uploadedLogo = logoPreview;
+    let uploadedAboutImage = aboutImagePreview;
+
+    if (faviconFile) {
+      const fileName = `favicon-${Math.random()}.${faviconFile.name.split('.').pop()}`;
+      await supabase.storage.from('product-images').upload(fileName, faviconFile);
+      uploadedFavicon = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+    }
+
+    if (logoFile) {
+      const fileName = `logo-${Math.random()}.${logoFile.name.split('.').pop()}`;
+      await supabase.storage.from('product-images').upload(fileName, logoFile);
+      uploadedLogo = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+    }
+
+    if (aboutImageFile) {
+      const fileName = `about-${Math.random()}.${aboutImageFile.name.split('.').pop()}`;
+      await supabase.storage.from('product-images').upload(fileName, aboutImageFile);
+      uploadedAboutImage = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+    }
+
+    const { error } = await supabase.from('site_settings').update({
+      hero_title: heroTitle,
+      phone,
+      email: siteEmail,
+      whatsapp,
+      about_title: aboutTitle,
+      about_text: aboutText,
+      about_image: uploadedAboutImage,
+      favicon_url: uploadedFavicon,
+      logo_url: uploadedLogo,
+      custom_title: customTitle,
+      custom_text: customText,
+      materials_title: materialsTitle,
+      materials_text: materialsText,
+      contact_title: contactTitle,
+    }).eq('id', 1);
+
+    if (error) alert('Error: ' + error.message);
+    else { alert('¡Ajustes y parametrización actualizados!'); window.location.reload(); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-bone p-6">
+      <div className="mx-auto max-w-6xl">
+        <button onClick={() => navigate('/')} className="mb-6 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-stone hover:text-wood">
+          <ArrowLeft size={16} /> Volver al sitio web
+        </button>
+
+        {!user ? (
+          <form onSubmit={handleLogin} className="bg-white p-8 rounded-lg shadow-md space-y-4 max-w-md mx-auto">
+            <h2 className="text-2xl font-bold mb-2">Panel Administrador</h2>
+            <input type="email" placeholder="Email" className="w-full border p-3 rounded text-sm" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="password" placeholder="Contraseña" className="w-full border p-3 rounded text-sm" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <button type="submit" disabled={loading} className="w-full bg-charcoal text-white py-3 rounded font-bold uppercase text-xs">
+              {loading ? 'Ingresando...' : 'Iniciar Sesión'}
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-8">
+            <div className="bg-white p-8 rounded-lg shadow-md space-y-6">
+              <div className="flex justify-between items-center border-b pb-4">
+                <h2 className="text-2xl font-bold">Parametrización por Secciones y Diseño</h2>
+                <button onClick={() => supabase.auth.signOut().then(() => { setUser(null); window.location.reload(); })} className="text-xs text-red-600 font-bold uppercase">Cerrar Sesión</button>
+              </div>
+
+              <form onSubmit={handleSaveSettings} className="space-y-8">
+                
+                {/* 1. LOGO Y FAVICON CON PREVIEW */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="border border-wood/20 bg-bone/40 p-5 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-sm">Logo (Header)</h3>
+                      <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded border shadow-sm">
+                        <img src={logoPreview || '/logo.png'} alt="Logo" className="h-6 object-contain bg-transparent" />
+                      </div>
+                    </div>
+                    <input type="file" accept="image/*" className="w-full border p-2 rounded bg-white text-xs" onChange={handleLogoChange} />
+                  </div>
+
+                  <div className="border border-wood/20 bg-bone/40 p-5 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-sm">Favicon (Pestaña)</h3>
+                      <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded border shadow-sm">
+                        <img src={faviconPreview || '/logo.png'} alt="Favicon" className="w-6 h-6 object-contain" />
+                      </div>
+                    </div>
+                    <input type="file" accept="image/*" className="w-full border p-2 rounded bg-white text-xs" onChange={handleFaviconChange} />
+                  </div>
+                </div>
+
+                {/* 2. SECCIÓN HOME (HERO) */}
+                <div className="border border-wood/20 bg-bone/40 p-5 rounded-lg space-y-3">
+                  <h3 className="font-bold text-sm uppercase text-wood">Sección Inicio (Hero)</h3>
+                  <div>
+                    <label className="block text-xs font-bold uppercase mb-1">Título principal</label>
+                    <input type="text" className="w-full border p-3 rounded text-sm bg-white" value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)} required />
+                  </div>
+                </div>
+
+                {/* 3. SECCIÓN A MEDIDA */}
+                <div className="border border-wood/20 bg-bone/40 p-5 rounded-lg space-y-3">
+                  <h3 className="font-bold text-sm uppercase text-wood">Sección A Medida</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    <input type="text" className="w-full border p-3 rounded text-sm bg-white" placeholder="Título" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} required />
+                    <textarea className="w-full border p-3 rounded text-sm bg-white" placeholder="Texto descriptivo" rows={2} value={customText} onChange={(e) => setCustomText(e.target.value)} required />
+                  </div>
+                </div>
+
+                {/* 4. SECCIÓN MATERIALES */}
+                <div className="border border-wood/20 bg-bone/40 p-5 rounded-lg space-y-3">
+                  <h3 className="font-bold text-sm uppercase text-wood">Sección Materiales</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    <input type="text" className="w-full border p-3 rounded text-sm bg-white" placeholder="Título" value={materialsTitle} onChange={(e) => setMaterialsTitle(e.target.value)} required />
+                    <textarea className="w-full border p-3 rounded text-sm bg-white" placeholder="Texto descriptivo" rows={2} value={materialsText} onChange={(e) => setMaterialsText(e.target.value)} required />
+                  </div>
+                </div>
+
+                {/* 5. SECCIÓN NOSOTROS */}
+                <div className="border border-wood/20 bg-bone/40 p-5 rounded-lg space-y-4">
+                  <h3 className="font-bold text-sm uppercase text-wood">Sección Nosotros</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_200px] gap-4 items-center">
+                    <div className="space-y-3">
+                      <input type="text" className="w-full border p-3 rounded text-sm bg-white" placeholder="Título" value={aboutTitle} onChange={(e) => setAboutTitle(e.target.value)} required />
+                      <textarea className="w-full border p-3 rounded text-sm bg-white" placeholder="Texto descriptivo" rows={3} value={aboutText} onChange={(e) => setAboutText(e.target.value)} required />
+                    </div>
+                    <div>
+                      <div className="aspect-[4/3] bg-bone border rounded overflow-hidden mb-2 shadow-sm">
+                        <img src={aboutImagePreview || 'https://images.pexels.com/photos/7484794/pexels-photo-7484794.jpeg?auto=compress&cs=tinysrgb&w=1200'} alt="Nosotros" className="w-full h-full object-cover" />
+                      </div>
+                      <input type="file" accept="image/*" className="w-full border p-1 rounded bg-white text-[10px]" onChange={handleAboutImageChange} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. SECCIÓN CONTACTO Y DATOS */}
+                <div className="border border-wood/20 bg-bone/40 p-5 rounded-lg space-y-3">
+                  <h3 className="font-bold text-sm uppercase text-wood">Sección Contacto y Datos Generales</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input type="text" className="w-full border p-3 rounded text-sm bg-white" placeholder="Título contacto" value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} required />
+                    <input type="text" className="w-full border p-3 rounded text-sm bg-white" placeholder="WhatsApp (ej: 5491124089472)" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} required />
+                    <input type="text" className="w-full border p-3 rounded text-sm bg-white" placeholder="Teléfono visible" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                    <input type="text" className="w-full border p-3 rounded text-sm bg-white" placeholder="Email institucional" value={siteEmail} onChange={(e) => setSiteEmail(e.target.value)} required />
+                  </div>
+                </div>
+
+                <button type="submit" disabled={loading} className="w-full bg-charcoal text-white py-3 rounded font-bold uppercase text-xs hover:bg-wood">
+                  Guardar Todos los Ajustes
+                </button>
+              </form>
+            </div>
+
+            {/* CATEGORÍAS */}
+            <div className="bg-white p-8 rounded-lg shadow-md space-y-4">
+              <h2 className="text-xl font-bold border-b pb-3">Categorías Dinámicas</h2>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {categories.map((cat) => <span key={cat} className="bg-bone border px-3 py-1.5 text-xs font-semibold rounded">{cat}</span>)}
+              </div>
+              <form onSubmit={handleAddCategory} className="flex gap-3">
+                <input type="text" placeholder="Nueva categoría" className="flex-1 border p-3 rounded text-sm" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} required />
+                <button type="submit" className="bg-charcoal text-white px-5 py-3 rounded text-xs font-bold uppercase">Agregar</button>
+              </form>
+            </div>
+
+            {/* TABLA DE PRODUCTOS */}
+            <div className="bg-white p-8 rounded-lg shadow-md space-y-4">
+              <h3 className="text-xl font-bold border-b pb-3">Muebles Cargados ({dbProducts.length})</h3>
+              <div className="divide-y">
+                {dbProducts.map((prod) => (
+                  <div key={prod.id} className="py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <img src={prod.image_url} alt={prod.title} className="w-14 h-14 object-cover rounded border" />
+                      <div>
+                        <h4 className="font-bold text-sm">{prod.title}</h4>
+                        <span className="text-xs text-wood font-semibold">{prod.category}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => handleDeleteProduct(prod.id)} className="text-xs bg-red-100 text-red-600 px-3 py-2 rounded font-bold">Eliminar</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
