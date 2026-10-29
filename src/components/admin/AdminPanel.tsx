@@ -14,6 +14,7 @@ export type SiteSettings = {
   whatsapp: string;
   favicon_url: string;
   logo_url: string;
+  header_announcement: string;
   about_title: string;
   about_text: string;
   about_image: string;
@@ -23,7 +24,12 @@ export type SiteSettings = {
   materials_title: string;
   materials_text: string;
   materials_image_url: string;
+  payment_title: string;
+  payment_text: string;
+  payment_image_url: string;
   contact_title: string;
+  contact_subtitle: string;
+  footer_text: string;
 };
 
 type Props = {
@@ -36,8 +42,9 @@ type Props = {
 
 const DEFAULTS: SiteSettings = {
   hero_title: '', hero_image_url: '', phone: '', email: '', whatsapp: '', favicon_url: '/logo.png', logo_url: '/logo.png',
-  about_title: '', about_text: '', about_image: '', custom_title: '', custom_text: '', custom_image_url: '',
-  materials_title: '', materials_text: '', materials_image_url: '', contact_title: '',
+  header_announcement: '', about_title: '', about_text: '', about_image: '', custom_title: '', custom_text: '', custom_image_url: '',
+  materials_title: '', materials_text: '', materials_image_url: '', payment_title: '', payment_text: '', payment_image_url: '',
+  contact_title: '', contact_subtitle: '', footer_text: '',
 };
 
 const normalize = (s: Partial<SiteSettings>): SiteSettings => ({ ...DEFAULTS, ...s });
@@ -77,7 +84,9 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
     e.preventDefault(); setSaving(true); setMessage(''); setError('');
     try {
       const next = { ...draft };
-      for (const key of ['hero_image_url','about_image','custom_image_url','materials_image_url','logo_url','favicon_url'] as (keyof SiteSettings)[]) if (files[key]) next[key] = await upload(files[key]!, String(key).replace('_url',''));
+      for (const key of ['hero_image_url','about_image','custom_image_url','materials_image_url','logo_url','favicon_url','payment_image_url'] as (keyof SiteSettings)[]) {
+        if (files[key]) next[key] = await upload(files[key]!, String(key).replace('_url',''));
+      }
       const { error } = await supabase.from('site_settings').update(next).eq('id', 1);
       if (error) throw error;
       setDraft(next); setFiles({}); onSettingsChange(next); setMessage('Cambios guardados y sincronizados correctamente.');
@@ -108,13 +117,20 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
           {(message || error) && <div className={`rounded-xl p-4 text-sm ${error ? 'bg-red-50 text-red-800' : 'bg-emerald-50 text-emerald-800'}`}>{error || message}</div>}
           
           <form onSubmit={save} className="space-y-6">
-            <SectionCard n="01" title="Marca">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div><h3 className="mb-3 text-sm font-bold">Logo</h3><ImageField name="logo_url" value={draft.logo_url} onChange={v=>set('logo_url',v)} file={files.logo_url} onFile={f=>setFiles(x=>({...x,logo_url:f}))}/></div>
-                <div><h3 className="mb-3 text-sm font-bold">Favicon</h3><ImageField name="favicon_url" value={draft.favicon_url} onChange={v=>set('favicon_url',v)} file={files.favicon_url} onFile={f=>setFiles(x=>({...x,favicon_url:f}))}/></div>
+            
+            {/* 01. ENCABEZADO Y FOOTER */}
+            <SectionCard n="01" title="Encabezado y Footer">
+              <div className="space-y-4">
+                <Field label="Texto barra superior (Header Notice)" value={draft.header_announcement} onChange={v => set('header_announcement', v)} />
+                <Field label="Texto Copyright Footer" value={draft.footer_text} onChange={v => set('footer_text', v)} />
+                <div className="grid gap-6 lg:grid-cols-2 pt-2">
+                  <div><h3 className="mb-2 text-xs font-bold uppercase">Logo (Header)</h3><ImageField name="logo_url" value={draft.logo_url} onChange={v => set('logo_url', v)} file={files.logo_url} onFile={f => setFiles(x => ({ ...x, logo_url: f }))} /></div>
+                  <div><h3 className="mb-2 text-xs font-bold uppercase">Favicon (Pestaña)</h3><ImageField name="favicon_url" value={draft.favicon_url} onChange={v => set('favicon_url', v)} file={files.favicon_url} onFile={f => setFiles(x => ({ ...x, favicon_url: f }))} /></div>
+                </div>
               </div>
             </SectionCard>
             
+            {/* 02. HOME / HERO */}
             <SectionCard n="02" title="Home / Hero">
               <div className="space-y-5">
                 <Field label="Título principal" value={draft.hero_title} onChange={v=>set('hero_title',v)}/>
@@ -122,6 +138,7 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
+            {/* 03. A MEDIDA */}
             <SectionCard n="03" title="A medida">
               <div className="space-y-5">
                 <Field label="Título" value={draft.custom_title} onChange={v=>set('custom_title',v)}/>
@@ -130,6 +147,7 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
+            {/* 04. MATERIALES */}
             <SectionCard n="04" title="Materiales">
               <div className="space-y-5">
                 <Field label="Título" value={draft.materials_title} onChange={v=>set('materials_title',v)}/>
@@ -138,6 +156,7 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
+            {/* 05. NOSOTROS */}
             <SectionCard n="05" title="Nosotros">
               <div className="space-y-5">
                 <Field label="Título" value={draft.about_title} onChange={v=>set('about_title',v)}/>
@@ -146,12 +165,28 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
-            <SectionCard n="06" title="Contacto">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Título" value={draft.contact_title} onChange={v=>set('contact_title',v)}/>
-                <Field label="Teléfono" value={draft.phone} onChange={v=>set('phone',v)}/>
-                <Field label="Email" value={draft.email} onChange={v=>set('email',v)}/>
-                <Field label="WhatsApp (solo números)" value={draft.whatsapp} onChange={v=>set('whatsapp',v)}/>
+            {/* 06. MODOS DE PAGO */}
+            <SectionCard n="06" title="Modos de Pago">
+              <div className="space-y-4">
+                <Field label="Título de la sección" value={draft.payment_title} onChange={v => set('payment_title', v)} />
+                <Field label="Texto aclaratorio / Promociones" multiline value={draft.payment_text} onChange={v => set('payment_text', v)} />
+                <div>
+                  <h3 className="mb-2 text-xs font-bold uppercase">Imagen de tarjetas / Banner de Pagos</h3>
+                  <ImageField name="payment_image_url" value={draft.payment_image_url} onChange={v => set('payment_image_url', v)} file={files.payment_image_url} onFile={f => setFiles(x => ({ ...x, payment_image_url: f }))} />
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* 07. CONTACTO Y FORMULARIO */}
+            <SectionCard n="07" title="Contacto y Formulario">
+              <div className="space-y-4">
+                <Field label="Título de la sección" value={draft.contact_title} onChange={v => set('contact_title', v)} />
+                <Field label="Subtítulo / Texto descriptivo" value={draft.contact_subtitle} onChange={v => set('contact_subtitle', v)} />
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="Teléfono" value={draft.phone} onChange={v => set('phone', v)} />
+                  <Field label="Email" value={draft.email} onChange={v => set('email', v)} />
+                  <Field label="WhatsApp (solo números)" value={draft.whatsapp} onChange={v => set('whatsapp', v)} />
+                </div>
               </div>
             </SectionCard>
 
@@ -161,12 +196,12 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
           </form>
           
           {/* GESTIÓN DE PRODUCTOS Y PRECIOS */}
-          <SectionCard n="07" title="Gestión de Muebles y Precios">
+          <SectionCard n="08" title="Gestión de Muebles y Precios">
             <ProductManager products={dbProducts} categories={categories} onProductChanged={loadProducts} />
           </SectionCard>
 
           {/* GESTIÓN DE CATEGORÍAS */}
-          <SectionCard n="08" title="Categorías">
+          <SectionCard n="09" title="Categorías">
             <div className="flex flex-wrap gap-2">{categories.map(c=><span key={c} className="rounded-full border bg-bone px-3 py-1.5 text-xs font-semibold">{c}</span>)}</div>
             <form onSubmit={addCategory} className="mt-4 flex gap-2">
               <input value={newCategory} onChange={e=>setNewCategory(e.target.value)} placeholder="Nueva categoría" className="flex-1 rounded-lg border p-3 text-sm"/>

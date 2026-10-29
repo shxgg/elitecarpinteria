@@ -17,6 +17,7 @@ import {
   Trash2,
   Truck,
   X,
+  CreditCard,
 } from 'lucide-react';
 import { materialSamples, products as initialProducts } from '@/data/products';
 import { AdminPanel } from './components/admin/AdminPanel';
@@ -47,6 +48,7 @@ export default function App() {
     whatsapp: '5491124089472',
     favicon_url: '/logo.png',
     logo_url: '/logo.png',
+    header_announcement: 'Fabricación propia · Muebles a medida · Envíos a todo el país',
     about_title: 'Un taller con los pies en el origen.',
     about_text: 'Somos una carpintería argentina que trabaja con aglomerado y melamina.',
     about_image: 'https://images.pexels.com/photos/7484794/pexels-photo-7484794.jpeg?auto=compress&cs=tinysrgb&w=1200',
@@ -56,7 +58,12 @@ export default function App() {
     materials_title: 'Simple de elegir, fácil de cuidar.',
     materials_text: 'Trabajamos principalmente con aglomerado y melamina.',
     materials_image_url: '',
+    payment_title: 'Modos de Pago',
+    payment_text: 'Aceptamos transferencias, tarjetas de crédito y efectivo.',
+    payment_image_url: '',
     contact_title: 'Hablemos de tu espacio.',
+    contact_subtitle: 'Buenos Aires, Argentina.',
+    footer_text: 'Elite Carpintería de Origen © 2026. Todos los derechos reservados.',
   });
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
@@ -140,7 +147,8 @@ export default function App() {
         setCategories(catData.map((c: any) => c.name));
       }
 
-      const { data: setmData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+      // Solución aplicada: .maybeSingle() en lugar de .single() para evitar el error 406
+      const { data: setmData } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle();
       if (setmData) {
         setSettings({
           hero_title: setmData.hero_title || settings.hero_title,
@@ -150,6 +158,7 @@ export default function App() {
           whatsapp: setmData.whatsapp || settings.whatsapp,
           favicon_url: setmData.favicon_url || '/logo.png',
           logo_url: setmData.logo_url || '/logo.png',
+          header_announcement: setmData.header_announcement || settings.header_announcement,
           about_title: setmData.about_title || settings.about_title,
           about_text: setmData.about_text || settings.about_text,
           about_image: setmData.about_image || settings.about_image,
@@ -159,7 +168,12 @@ export default function App() {
           materials_title: setmData.materials_title || settings.materials_title,
           materials_text: setmData.materials_text || settings.materials_text,
           materials_image_url: setmData.materials_image_url || settings.materials_image_url,
+          payment_title: setmData.payment_title || settings.payment_title,
+          payment_text: setmData.payment_text || settings.payment_text,
+          payment_image_url: setmData.payment_image_url || settings.payment_image_url,
           contact_title: setmData.contact_title || settings.contact_title,
+          contact_subtitle: setmData.contact_subtitle || settings.contact_subtitle,
+          footer_text: setmData.footer_text || settings.footer_text,
         });
 
         if (setmData.favicon_url) {
@@ -201,7 +215,7 @@ export default function App() {
         </div>
       )}
 
-      {route !== '/admin' && <TopNotice />}
+      {route !== '/admin' && <TopNotice settings={settings} />}
       {route !== '/admin' && (
         <Header
           menuOpen={menuOpen}
@@ -330,8 +344,8 @@ function getRoute(): Route {
   return '/';
 }
 
-function TopNotice() {
-  return <div className="bg-charcoal px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-white/75">Fabricación propia <span className="mx-2 text-wood">·</span> Muebles a medida <span className="mx-2 text-wood">·</span> Envíos a todo el país</div>;
+function TopNotice({ settings }: { settings: any }) {
+  return <div className="bg-charcoal px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-white/75">{settings.header_announcement}</div>;
 }
 
 type HeaderProps = {
@@ -581,7 +595,8 @@ function Contact({ settings, whatsappLink }: { settings: any; whatsappLink: (msg
     <div className="bg-white py-20 px-5 lg:px-10">
       <div className="mx-auto max-w-3xl text-center">
         <h1 className="font-display text-4xl">{settings.contact_title}</h1>
-        <p className="mt-2 text-stone">WhatsApp: {settings.phone} · Email: {settings.email}</p>
+        <p className="mt-2 text-stone">{settings.contact_subtitle}</p>
+        <p className="mt-1 text-xs text-stone">WhatsApp: {settings.phone} · Email: {settings.email}</p>
         <form onSubmit={submit} className="mt-10 grid gap-6 bg-bone p-8 text-left rounded-lg shadow-sm">
           <label className="block text-xs font-bold uppercase">
             <span>Nombre</span>
@@ -602,7 +617,7 @@ function Footer({ navigate, settings }: { navigate: (path: string) => void; sett
   return (
     <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-16 text-white/70 text-center text-xs space-y-2">
       <p>{settings.phone} · {settings.email}</p>
-      <p className="text-white/40">Elite Carpintería de Origen © 2026. Todos los derechos reservados.</p>
+      <p className="text-white/40">{settings.footer_text}</p>
     </footer>
   );
 }
