@@ -4,6 +4,7 @@ import { supabase } from '../../supabase';
 import { ImageField } from './ImageField';
 import { LivePreview } from './LivePreview';
 import { SectionCard } from './SectionCard';
+import { ProductManager } from './ProductManager';
 
 export type SiteSettings = {
   hero_title: string;
@@ -53,9 +54,18 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
   const [files, setFiles] = useState<Partial<Record<keyof SiteSettings, File>>>({});
   const [saving, setSaving] = useState(false); const [message, setMessage] = useState(''); const [error, setError] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [dbProducts, setDbProducts] = useState<any[]>([]);
+
+  const loadProducts = async () => {
+    const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (data) setDbProducts(data);
+  };
 
   useEffect(() => { setDraft(normalize(settings)); }, [settings]);
-  useEffect(() => { supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null)); }, []);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    loadProducts();
+  }, []);
   
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(normalize(settings)) || Object.keys(files).length > 0, [draft, settings, files]);
   const set = <K extends keyof SiteSettings>(key: K, value: SiteSettings[K]) => setDraft(d => ({ ...d, [key]: value }));
@@ -150,7 +160,13 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
             </button>
           </form>
           
-          <SectionCard n="07" title="Categorías">
+          {/* GESTIÓN DE PRODUCTOS Y PRECIOS */}
+          <SectionCard n="07" title="Gestión de Muebles y Precios">
+            <ProductManager products={dbProducts} categories={categories} onProductChanged={loadProducts} />
+          </SectionCard>
+
+          {/* GESTIÓN DE CATEGORÍAS */}
+          <SectionCard n="08" title="Categorías">
             <div className="flex flex-wrap gap-2">{categories.map(c=><span key={c} className="rounded-full border bg-bone px-3 py-1.5 text-xs font-semibold">{c}</span>)}</div>
             <form onSubmit={addCategory} className="mt-4 flex gap-2">
               <input value={newCategory} onChange={e=>setNewCategory(e.target.value)} placeholder="Nueva categoría" className="flex-1 rounded-lg border p-3 text-sm"/>
