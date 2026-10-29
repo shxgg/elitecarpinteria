@@ -17,7 +17,7 @@ import {
   Trash2,
   Truck,
   X,
-  CreditCard,
+  ShieldCheck,
 } from 'lucide-react';
 import { materialSamples, products as initialProducts } from '@/data/products';
 import { AdminPanel } from './components/admin/AdminPanel';
@@ -50,16 +50,16 @@ export default function App() {
     logo_url: '/logo.png',
     header_announcement: 'Fabricación propia · Muebles a medida · Envíos a todo el país',
     about_title: 'Un taller con los pies en el origen.',
-    about_text: 'Somos una carpintería argentina que trabaja con aglomerado y melamina.',
+    about_text: 'Elite nace de hacer muebles honestos, sólidos y bien pensados. Trabajamos cada placa entendiendo su veta, su resistencia y la forma en que va a integrarse a tu rutina diaria.',
     about_image: 'https://images.pexels.com/photos/7484794/pexels-photo-7484794.jpeg?auto=compress&cs=tinysrgb&w=1200',
     custom_title: 'Un mueble a medida empieza por escucharte.',
-    custom_text: 'Diseñamos cada pieza alrededor de tu espacio, tus hábitos y tu forma de usarlo.',
+    custom_text: 'Diseñamos cada pieza alrededor de tu espacio, tus hábitos y tu forma de usarlo para garantizar funcionalidad y estética impecable.',
     custom_image_url: '',
     materials_title: 'Simple de elegir, fácil de cuidar.',
-    materials_text: 'Trabajamos principalmente con aglomerado y melamina.',
+    materials_text: 'Trabajamos principalmente con aglomerado y melamina de primera calidad, asegurando durabilidad, terminaciones limpias y fácil mantenimiento.',
     materials_image_url: '',
     payment_title: 'Modos de Pago',
-    payment_text: 'Aceptamos transferencias, tarjetas de crédito y efectivo.',
+    payment_text: 'Aceptamos transferencias bancarias, tarjetas de crédito y efectivo con descuentos especiales.',
     payment_image_url: '',
     contact_title: 'Hablemos de tu espacio.',
     contact_subtitle: 'Buenos Aires, Argentina.',
@@ -147,7 +147,6 @@ export default function App() {
         setCategories(catData.map((c: any) => c.name));
       }
 
-      // Solución aplicada: .maybeSingle() en lugar de .single() para evitar el error 406
       const { data: setmData } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle();
       if (setmData) {
         setSettings({
@@ -423,8 +422,39 @@ function Home({ navigate, products, settings, whatsappLink, addToCart }: { navig
           </div>
         </div>
       </section>
+
       <FeaturedProducts navigate={navigate} products={products} addToCart={addToCart} />
+      <Process />
+      <Benefits />
+      <Testimonials />
     </>
+  );
+}
+
+function SectionHeading({ eyebrow, title, copy }: { eyebrow: string; title: React.ReactNode; copy?: string }) {
+  return (
+    <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
+      <div><p className="eyebrow">{eyebrow}</p><h2 className="section-title mt-4">{title}</h2></div>
+      {copy && <p className="max-w-[320px] text-sm leading-6 text-stone">{copy}</p>}
+    </div>
+  );
+}
+
+function FeaturedProducts({ navigate, products, addToCart }: { navigate: (path: string) => void; products: any[]; addToCart: (p: any) => void }) {
+  return (
+    <section className="bg-white px-5 py-20 lg:px-10 lg:py-28">
+      <div className="mx-auto max-w-[1320px]">
+        <SectionHeading eyebrow="01 / Muebles destacados" title={<>Diseñados para <em>quedarse.</em></>} copy="Algunos modelos para inspirarte. Todo se puede adaptar a tus medidas y necesidades." />
+        <div className="mt-12 grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
+          {products.slice(0, 4).map((product) => (
+            <ProductCard key={product.id} product={product} navigate={navigate} addToCart={addToCart} />
+          ))}
+        </div>
+        <div className="mt-14 text-center">
+          <button onClick={() => navigate('/muebles')} className="button-dark">Ver todos los muebles <ArrowRight size={16} /></button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -438,7 +468,8 @@ function ProductCard({ product, navigate, addToCart }: { product: any; navigate:
       <div>
         <button onClick={() => navigate(`/muebles/${product.id}`)} className="block w-full text-left">
           <div className="relative aspect-[.88] overflow-hidden bg-stone-light">
-            <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+            <img src={product.image} alt={`${product.name}`} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" loading="lazy" />
+            <span className="absolute left-3 top-3 bg-bone/90 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.14em] text-charcoal">{product.kind || 'A medida'}</span>
           </div>
           <div className="pt-4">
             <div className="flex justify-between items-center">
@@ -446,6 +477,7 @@ function ProductCard({ product, navigate, addToCart }: { product: any; navigate:
               <span className="text-xs font-bold text-charcoal">{formattedPrice}</span>
             </div>
             <h3 className="mt-2 font-display text-2xl">{product.name}</h3>
+            <p className="mt-2 text-sm leading-6 text-stone line-clamp-2">{product.description}</p>
           </div>
         </button>
       </div>
@@ -456,16 +488,69 @@ function ProductCard({ product, navigate, addToCart }: { product: any; navigate:
   );
 }
 
-function FeaturedProducts({ navigate, products, addToCart }: { navigate: (path: string) => void; products: any[]; addToCart: (p: any) => void }) {
+function Process() {
+  const steps = [
+    ['01', 'Consulta', 'Nos contás qué necesitás, dónde va y cómo te gustaría que se sienta.'],
+    ['02', 'Diseño y medidas', 'Pensamos la distribución y definimos medidas, material, color y detalles.'],
+    ['03', 'Fabricación', 'Cortamos, canteamos y armamos en nuestro taller con atención en cada terminación.'],
+    ['04', 'Entrega e instalación', 'Coordinamos la entrega y dejamos tu mueble listo para usar.']
+  ];
   return (
-    <section className="bg-white px-5 py-20 lg:px-10 lg:py-28">
+    <section className="bg-bone px-5 py-20 lg:px-10 lg:py-28">
       <div className="mx-auto max-w-[1320px]">
-        <div className="flex justify-between items-end">
-          <div><p className="eyebrow">01 / Muebles destacados</p><h2 className="section-title mt-4">Diseñados para <em>quedarse.</em></h2></div>
+        <SectionHeading eyebrow="02 / Cómo trabajamos" title={<>De la idea a tu casa, <em>sin vueltas.</em></>} />
+        <div className="mt-14 grid gap-0 border-t border-charcoal/15 md:grid-cols-4">
+          {steps.map(([number, title, copy]) => (
+            <div key={number} className="border-b border-charcoal/15 py-7 md:border-b-0 md:border-r md:px-6 md:first:pl-0 md:last:border-r-0">
+              <span className="font-display text-3xl text-wood">{number}</span>
+              <h3 className="mt-7 font-display text-2xl">{title}</h3>
+              <p className="mt-3 text-sm leading-6 text-stone">{copy}</p>
+            </div>
+          ))}
         </div>
-        <div className="mt-12 grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
-          {products.slice(0, 4).map((product) => (
-            <ProductCard key={product.id} product={product} navigate={navigate} addToCart={addToCart} />
+      </div>
+    </section>
+  );
+}
+
+function Benefits() {
+  const benefits = [
+    [PenTool, 'Fabricación propia', 'Lo hacemos en nuestro taller, de principio a fin.'],
+    [Ruler, 'A medida o en serie', 'Una pieza única o un modelo repetible, según tu proyecto.'],
+    [Truck, 'Envíos a todo el país', 'Coordinamos la logística para que llegue a donde estés.'],
+    [Sparkles, 'Atención personalizada', 'Te acompañamos para tomar buenas decisiones.']
+  ];
+  return (
+    <section className="border-y border-charcoal/10 bg-white px-5 py-16 lg:px-10">
+      <div className="mx-auto grid max-w-[1320px] gap-9 sm:grid-cols-2 lg:grid-cols-4">
+        {benefits.map(([Icon, title, copy]) => (
+          <div key={title as string} className="flex gap-4">
+            <Icon size={22} strokeWidth={1.4} className="shrink-0 text-wood" />
+            <div><h3 className="text-sm font-bold">{title as string}</h3><p className="mt-2 text-xs leading-5 text-stone">{copy as string}</p></div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Testimonials() {
+  const testimonials = [
+    ['“Nos ayudaron a ordenar una cocina complicada y el resultado quedó impecable. Se nota el cuidado en cada detalle.”', 'Lucía M. · Colegiales'],
+    ['“Pedimos un placard con medidas muy específicas y cumplieron con los tiempos y la instalación.”', 'Tomás R. · Vicente López'],
+    ['“El escritorio quedó hermoso y mucho más sólido de lo que esperábamos. La atención fue muy clara.”', 'Sofía G. · La Plata']
+  ];
+  return (
+    <section className="bg-bone px-5 py-20 lg:px-10 lg:py-28">
+      <div className="mx-auto max-w-[1320px]">
+        <SectionHeading eyebrow="03 / Lo que dicen" title={<>Hecho para la vida <em>real.</em></>} />
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {testimonials.map(([quote, author]) => (
+            <blockquote key={author} className="border border-charcoal/12 bg-white p-7">
+              <span className="font-display text-4xl text-wood">“</span>
+              <p className="mt-2 font-display text-xl leading-8">{quote.replace(/[“”]/g, '')}</p>
+              <footer className="mt-7 text-[10px] font-bold uppercase tracking-[0.15em] text-stone">{author}</footer>
+            </blockquote>
           ))}
         </div>
       </div>
@@ -477,16 +562,23 @@ function Catalog({ navigate, products, categories, addToCart }: { navigate: (pat
   const [filter, setFilter] = useState<string>('Todos');
   const filtered = useMemo(() => filter === 'Todos' ? products : products.filter((product) => product.category === filter), [filter, products]);
   return (
-    <div className="bg-white px-5 py-20 lg:px-10">
-      <div className="mx-auto max-w-[1320px]">
-        <div className="flex gap-2 overflow-x-auto border-b border-charcoal/15 pb-3 mb-10">
+    <div className="bg-white">
+      <section className="border-b border-charcoal/10 px-5 pb-16 pt-20 lg:px-10 lg:pb-24 lg:pt-28">
+        <div className="mx-auto max-w-[1320px]">
+          <p className="eyebrow">Colección Elite</p>
+          <h1 className="mt-5 font-display text-5xl leading-[.98] tracking-[-.04em] sm:text-7xl">Muebles que se adaptan<br /><em>a tu manera de vivir.</em></h1>
+          <p className="mt-7 max-w-[500px] text-base leading-7 text-stone">Explorá nuestros modelos de referencia. Cada producto puede personalizarse en medidas, color y distribución.</p>
+        </div>
+      </section>
+      <div className="mx-auto max-w-[1320px] px-5 py-12 lg:px-10">
+        <div className="flex gap-2 overflow-x-auto border-b border-charcoal/15 pb-3">
           {['Todos', ...categories].map((category) => (
             <button key={category} onClick={() => setFilter(category)} className={`whitespace-nowrap px-3 py-2 text-[10px] font-bold uppercase tracking-[0.13em] ${filter === category ? 'border-b-2 border-wood text-wood' : 'text-stone hover:text-charcoal'}`}>
               {category}
             </button>
           ))}
         </div>
-        <div className="grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
           {filtered.map((product) => (
             <ProductCard key={product.id} product={product} navigate={navigate} addToCart={addToCart} />
           ))}
@@ -502,64 +594,120 @@ function ProductDetail({ product, navigate, whatsappLink, addToCart }: { product
     : 'Precio a consultar';
 
   return (
-    <div className="bg-bone py-12 px-5 lg:px-10">
-      <div className="mx-auto max-w-[1320px]">
-        <button onClick={() => navigate('/muebles')} className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-stone hover:text-wood">
-          <ArrowLeft size={14} /> Volver a muebles
-        </button>
-        <div className="grid gap-10 lg:grid-cols-2">
-          <div className="aspect-[1.3] bg-stone-light overflow-hidden">
-            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-          </div>
-          <div>
-            <p className="eyebrow">{product.category}</p>
-            <h1 className="font-display text-4xl mt-2">{product.name}</h1>
-            <p className="text-2xl font-bold text-charcoal mt-3">{formattedPrice}</p>
-            <p className="mt-4 text-stone text-sm leading-relaxed">{product.description}</p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <button onClick={() => addToCart(product)} className="button-dark flex-1 justify-center">
-                <Plus size={16} /> Agregar al Carrito
-              </button>
-              <a href={whatsappLink(`Hola Elite, quisiera consultar por ${product.name} (${formattedPrice}).`)} target="_blank" rel="noreferrer" className="button-outline flex-1 justify-center">
-                Consultar por WhatsApp <MessageCircle size={16} />
-              </a>
-            </div>
+    <div className="bg-bone">
+      <section className="mx-auto grid max-w-[1320px] gap-10 px-5 py-12 lg:grid-cols-[1.15fr_.85fr] lg:gap-20 lg:px-10 lg:py-20">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 aspect-[1.4] overflow-hidden bg-stone-light">
+            <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
           </div>
         </div>
-      </div>
+        <div className="self-center">
+          <button onClick={() => navigate('/muebles')} className="mb-10 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-stone hover:text-wood">
+            <ArrowLeft size={14} /> Volver a muebles
+          </button>
+          <p className="eyebrow">{product.category}</p>
+          <h1 className="mt-4 font-display text-5xl leading-none tracking-[-.04em] sm:text-6xl">{product.name}</h1>
+          <div className="mt-4 flex items-center gap-4">
+            <span className="inline-block border border-wood px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-wood">{product.kind || 'A medida'}</span>
+            <span className="text-2xl font-bold text-charcoal">{formattedPrice}</span>
+          </div>
+          <p className="mt-8 text-base leading-7 text-stone">{product.details || product.description}</p>
+          <div className="mt-10 grid gap-5 border-y border-charcoal/15 py-6 text-sm sm:grid-cols-2">
+            <div><p className="text-[10px] font-bold uppercase tracking-wider text-stone">Medidas de referencia</p><p className="mt-2 font-semibold">A medida según espacio</p></div>
+            <div><p className="text-[10px] font-bold uppercase tracking-wider text-stone">Material</p><p className="mt-2 font-semibold">Melamina / Aglomerado</p></div>
+          </div>
+          <div className="mt-9 flex flex-col sm:flex-row gap-3">
+            <button onClick={() => addToCart(product)} className="button-dark flex-1 justify-center">
+              <Plus size={16} /> Agregar al Carrito
+            </button>
+            <a href={whatsappLink(`Hola Elite, quisiera consultar por ${product.name} (${formattedPrice}).`)} target="_blank" rel="noreferrer" className="button-outline flex-1 justify-center">
+              Consultar por WhatsApp <MessageCircle size={16} />
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
 
 function CustomMade({ settings, whatsappLink }: { settings: any; whatsappLink: (msg?: string) => string }) {
   return (
-    <div className="bg-bone py-20 px-5 lg:px-10">
-      <div className="mx-auto max-w-5xl text-center">
-        <h1 className="font-display text-4xl">{settings.custom_title}</h1>
-        <p className="mt-4 text-stone max-w-2xl mx-auto">{settings.custom_text}</p>
-        {settings.custom_image_url && <img src={settings.custom_image_url} alt="Muebles a medida" className="mt-10 w-full aspect-[16/9] object-cover rounded shadow-md" />}
-        <div className="mt-10">
-          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="button-dark inline-flex">Consultar por WhatsApp <MessageCircle size={16} /></a>
+    <div className="bg-bone">
+      <section className="border-b border-charcoal/10 px-5 pb-16 pt-20 lg:px-10 lg:pb-24 lg:pt-28">
+        <div className="mx-auto max-w-[1320px]">
+          <p className="eyebrow">El servicio</p>
+          <h1 className="mt-5 font-display text-5xl leading-[.98] tracking-[-.04em] sm:text-7xl">{settings.custom_title}</h1>
+          <p className="mt-7 max-w-[500px] text-base leading-7 text-stone">{settings.custom_text}</p>
         </div>
-      </div>
+      </section>
+      <section className="mx-auto grid max-w-[1320px] gap-12 px-5 py-16 lg:grid-cols-[.8fr_1.2fr] lg:px-10 lg:py-24">
+        <div>
+          <p className="eyebrow">Diseño que resuelve</p>
+          <h2 className="mt-4 font-display text-4xl leading-tight">La medida justa no es solo un número.</h2>
+          <p className="mt-6 text-sm leading-7 text-stone">Es entender cómo circulás, qué querés guardar, dónde necesitás apoyo y qué querés ver cuando entrás a tu casa.</p>
+          {settings.custom_image_url && <img src={settings.custom_image_url} alt="A medida" className="mt-8 rounded shadow-md w-full aspect-[16/9] object-cover" />}
+        </div>
+        <QuoteForm whatsappLink={whatsappLink} />
+      </section>
     </div>
   );
 }
 
+function QuoteForm({ whatsappLink }: { whatsappLink: (msg?: string) => string }) {
+  const [sent, setSent] = useState(false);
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const message = `Hola Elite, soy ${data.get('name')}.\nTeléfono: ${data.get('phone')}\nEmail: ${data.get('email')}\nTipo de mueble: ${data.get('furniture')}\nMedidas aproximadas: ${data.get('measures')}\nMaterial o color: ${data.get('material')}\nZona de entrega: ${data.get('zone')}\nComentarios: ${data.get('comments')}`;
+    window.open(whatsappLink(message), '_blank', 'noopener,noreferrer');
+    setSent(true);
+  }
+  if (sent) return <div className="flex min-h-[430px] flex-col items-center justify-center bg-white p-8 text-center"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-wood text-white"><Check size={25} /></span><h2 className="mt-6 font-display text-3xl">Consulta lista.</h2><p className="mt-3 max-w-[300px] text-sm leading-6 text-stone">Se abrió WhatsApp con todos los datos ordenados para que podamos responderte.</p></div>;
+  return (
+    <form onSubmit={submit} className="grid gap-6 bg-white p-6 sm:grid-cols-2 sm:p-10 shadow-sm border border-charcoal/10">
+      <Field label="Nombre" name="name" placeholder="Tu nombre" required />
+      <Field label="Teléfono" name="phone" placeholder="11 2408-9472" required />
+      <Field label="Email" name="email" type="email" placeholder="tu@email.com" required />
+      <Field label="Tipo de mueble" name="furniture" as="select" options={['Cocina', 'Placard o vestidor', 'Living', 'Escritorio', 'Baño', 'Otro']} required />
+      <Field label="Medidas aproximadas" name="measures" placeholder="Ancho x alto x profundidad" />
+      <Field label="Material o color preferido" name="material" placeholder="Ej. Roble, blanco, melamina" />
+      <Field label="Zona de entrega" name="zone" placeholder="Localidad / provincia" required />
+      <Field label="Comentarios" name="comments" placeholder="Contanos un poco más" as="textarea" />
+      <button type="submit" className="button-dark sm:col-span-2 sm:justify-center">Enviar por WhatsApp <MessageCircle size={16} /></button>
+    </form>
+  );
+}
+
+type FieldProps = { label: string; name: string; placeholder?: string; type?: string; as?: 'input' | 'select' | 'textarea'; options?: string[]; required?: boolean };
+function Field({ label, name, placeholder, type = 'text', as = 'input', options = [], required = false }: FieldProps) {
+  return <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70"><span>{label}</span>{as === 'select' ? <select name={name} defaultValue="" required={required} className="w-full border p-3 rounded mt-1 bg-bone text-charcoal text-sm"><option value="" disabled>Seleccioná una opción</option>{options.map((option) => <option key={option}>{option}</option>)}</select> : as === 'textarea' ? <textarea name={name} placeholder={placeholder} rows={4} required={required} className="w-full border p-3 rounded mt-1 bg-bone text-charcoal text-sm" /> : <input name={name} type={type} placeholder={placeholder} required={required} className="w-full border p-3 rounded mt-1 bg-bone text-charcoal text-sm" />}</label>;
+}
+
 function Materials({ settings }: { settings: any }) {
   return (
-    <div className="bg-white py-20 px-5 lg:px-10">
-      <div className="mx-auto max-w-5xl text-center">
-        <h1 className="font-display text-4xl">{settings.materials_title}</h1>
-        <p className="mt-4 text-stone max-w-2xl mx-auto">{settings.materials_text}</p>
-        {settings.materials_image_url && <img src={settings.materials_image_url} alt="Materiales" className="mt-10 w-full aspect-[16/9] object-cover rounded shadow-md" />}
-        <div className="mt-12 grid grid-cols-3 sm:grid-cols-6 gap-4">
-          {materialSamples.map((sample) => (
-            <div key={sample.name} className="text-center">
-              <div className="aspect-square border border-charcoal/10 rounded" style={{ backgroundColor: sample.value }} />
-              <p className="mt-2 text-[10px] font-semibold text-stone">{sample.name}</p>
+    <div className="bg-white">
+      <section className="border-b border-charcoal/10 px-5 pb-16 pt-20 lg:px-10 lg:pb-24 lg:pt-28 bg-bone">
+        <div className="mx-auto max-w-[1320px]">
+          <p className="eyebrow">Materiales honestos</p>
+          <h1 className="mt-5 font-display text-5xl leading-[.98] tracking-[-.04em] sm:text-7xl">{settings.materials_title}</h1>
+          <p className="mt-7 max-w-[500px] text-base leading-7 text-stone">{settings.materials_text}</p>
+        </div>
+      </section>
+      <div className="mx-auto max-w-[1320px] px-5 py-16 lg:px-10 lg:py-24">
+        <div className="grid gap-12 lg:grid-cols-2 items-center">
+          <div>
+            <h2 className="font-display text-4xl">Aglomerado y melamina</h2>
+            <p className="mt-6 text-sm leading-7 text-stone">El aglomerado es un tablero formado por partículas de madera prensadas con recubrimiento de melamina, ofreciendo una superficie durable, estética y de fácil mantenimiento.</p>
+            {settings.materials_image_url && <img src={settings.materials_image_url} alt="Materiales" className="mt-6 w-full aspect-[16/9] object-cover rounded shadow" />}
+          </div>
+          <div className="bg-bone p-7 sm:p-10 border border-charcoal/10">
+            <p className="eyebrow">Muestrario de referencia</p>
+            <div className="mt-8 grid grid-cols-3 gap-4 sm:grid-cols-6 lg:grid-cols-3">
+              {materialSamples.map((sample) => (
+                <div key={sample.name}><div className="aspect-square border border-charcoal/10 shadow-sm" style={{ backgroundColor: sample.value }} /><p className="mt-2 text-[10px] font-semibold leading-4 text-stone">{sample.name}</p></div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>
@@ -568,15 +716,24 @@ function Materials({ settings }: { settings: any }) {
 
 function About({ navigate, settings }: { navigate: (path: string) => void; settings: any }) {
   return (
-    <div className="bg-bone py-20 px-5 lg:px-10">
-      <div className="mx-auto max-w-4xl text-center">
-        <h1 className="font-display text-4xl">{settings.about_title}</h1>
-        <p className="mt-6 text-stone leading-relaxed">{settings.about_text}</p>
-        <div className="mt-8 aspect-[16/9] overflow-hidden rounded shadow-md max-w-2xl mx-auto">
-          <img src={settings.about_image} alt="Nosotros" className="w-full h-full object-cover" />
+    <div className="bg-bone">
+      <section className="border-b border-charcoal/10 px-5 pb-16 pt-20 lg:px-10 lg:pb-24 lg:pt-28">
+        <div className="mx-auto max-w-[1320px]">
+          <p className="eyebrow">Nosotros</p>
+          <h1 className="mt-5 font-display text-5xl leading-[.98] tracking-[-.04em] sm:text-7xl">{settings.about_title}</h1>
+          <p className="mt-7 max-w-[500px] text-base leading-7 text-stone">Elite nace de hacer muebles honestos y bien pensados.</p>
         </div>
-        <button onClick={() => navigate('/a-medida')} className="button-dark mt-8 inline-flex">Hablemos de tu proyecto <ArrowRight size={16} /></button>
-      </div>
+      </section>
+      <section className="mx-auto grid max-w-[1320px] gap-12 px-5 py-16 lg:grid-cols-2 lg:items-center lg:px-10 lg:py-24">
+        <div className="aspect-[.95] overflow-hidden rounded border border-charcoal/10 shadow-sm">
+          <img src={settings.about_image} alt="Taller" className="h-full w-full object-cover" loading="lazy" />
+        </div>
+        <div>
+          <h2 className="font-display text-4xl leading-tight">Tradición y precisión en cada mueble.</h2>
+          <p className="mt-7 text-sm leading-7 text-stone">{settings.about_text}</p>
+          <button onClick={() => navigate('/a-medida')} className="button-dark mt-8">Hablemos de tu proyecto <ArrowRight size={16} /></button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -592,40 +749,63 @@ function Contact({ settings, whatsappLink }: { settings: any; whatsappLink: (msg
   }
 
   return (
-    <div className="bg-white py-20 px-5 lg:px-10">
-      <div className="mx-auto max-w-3xl text-center">
-        <h1 className="font-display text-4xl">{settings.contact_title}</h1>
-        <p className="mt-2 text-stone">{settings.contact_subtitle}</p>
-        <p className="mt-1 text-xs text-stone">WhatsApp: {settings.phone} · Email: {settings.email}</p>
-        <form onSubmit={submit} className="mt-10 grid gap-6 bg-bone p-8 text-left rounded-lg shadow-sm">
-          <label className="block text-xs font-bold uppercase">
-            <span>Nombre</span>
-            <input name="name" placeholder="Tu nombre" required className="w-full border p-3 rounded mt-1 text-sm bg-white" />
-          </label>
-          <label className="block text-xs font-bold uppercase">
-            <span>Mensaje</span>
-            <textarea name="message" placeholder="¿En qué podemos ayudarte?" rows={4} required className="w-full border p-3 rounded mt-1 text-sm bg-white" />
-          </label>
-          <button type="submit" className="button-dark justify-center">{sent ? '¡Enviado!' : 'Enviar consulta'} <MessageCircle size={16} /></button>
+    <div className="bg-white">
+      <section className="border-b border-charcoal/10 px-5 pb-16 pt-20 lg:px-10 lg:pb-24 lg:pt-28 bg-bone">
+        <div className="mx-auto max-w-[1320px]">
+          <p className="eyebrow">Contacto</p>
+          <h1 className="mt-5 font-display text-5xl leading-[.98] tracking-[-.04em] sm:text-7xl">{settings.contact_title}</h1>
+          <p className="mt-7 max-w-[500px] text-base leading-7 text-stone">{settings.contact_subtitle}</p>
+        </div>
+      </section>
+      <section className="mx-auto grid max-w-[1320px] gap-14 px-5 py-16 lg:grid-cols-[.7fr_1.3fr] lg:px-10 lg:py-24">
+        <div className="space-y-8">
+          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="flex items-start gap-4 group">
+            <MessageCircle className="mt-1 text-wood group-hover:scale-110 transition-transform" size={24} />
+            <span><strong className="block text-sm uppercase tracking-wider">WhatsApp</strong><span className="mt-1 block text-sm text-stone">{settings.phone}</span></span>
+          </a>
+          <div className="flex items-start gap-4">
+            <Mail className="mt-1 text-wood" size={24} />
+            <span><strong className="block text-sm uppercase tracking-wider">Email institucional</strong><span className="mt-1 block text-sm text-stone">{settings.email}</span></span>
+          </div>
+
+          {/* Modos de pago informados en Contacto o sección dedicada */}
+          <div className="border-t border-charcoal/10 pt-6 space-y-3">
+            <strong className="block text-sm uppercase tracking-wider text-wood flex items-center gap-2"><ShieldCheck size={18}/> {settings.payment_title || 'Modos de Pago'}</strong>
+            <p className="text-xs text-stone leading-relaxed">{settings.payment_text}</p>
+            {settings.payment_image_url && <img src={settings.payment_image_url} alt="Métodos de pago" className="mt-2 h-12 object-contain" />}
+          </div>
+        </div>
+
+        <form onSubmit={submit} className="grid gap-6 bg-bone p-6 sm:p-10 border border-charcoal/1{-10}">
+          <Field label="Nombre" name="name" placeholder="Tu nombre" required />
+          <Field label="Mensaje" name="message" placeholder="Escribinos tu consulta..." as="textarea" required />
+          <button type="submit" className="button-dark sm:justify-center">{sent ? '¡Enviado!' : 'Enviar mensaje'} <MessageCircle size={16} /></button>
         </form>
-      </div>
+      </section>
     </div>
   );
 }
 
 function Footer({ navigate, settings }: { navigate: (path: string) => void; settings: any }) {
   return (
-    <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-16 text-white/70 text-center text-xs space-y-2">
-      <p>{settings.phone} · {settings.email}</p>
-      <p className="text-white/40">{settings.footer_text}</p>
+    <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-16 text-white/70 lg:px-10">
+      <div className="mx-auto max-w-[1320px] flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+        <div>
+          <h3 className="font-display text-xl text-white">Elite Carpintería de Origen</h3>
+          <p className="mt-2 text-xs text-white/50">{settings.phone} · {settings.email}</p>
+        </div>
+        <div className="text-xs text-white/40">
+          <p>{settings.footer_text}</p>
+        </div>
+      </div>
     </footer>
   );
 }
 
 function WhatsAppButton({ whatsappLink }: { whatsappLink: (msg?: string) => string }) {
   return (
-    <a href={whatsappLink()} target="_blank" rel="noreferrer" aria-label="WhatsApp" className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg">
-      <MessageCircle size={26} />
+    <a href={whatsappLink()} target="_blank" rel="noreferrer" aria-label="WhatsApp" className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl hover:scale-105 transition-transform">
+      <MessageCircle size={28} />
     </a>
   );
 }

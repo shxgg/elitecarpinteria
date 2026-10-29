@@ -5,6 +5,7 @@ import { ImageField } from './ImageField';
 import { LivePreview } from './LivePreview';
 import { SectionCard } from './SectionCard';
 import { ProductManager } from './ProductManager';
+import { SectionContentManager } from './SectionContentManager';
 
 export type SiteSettings = {
   hero_title: string;
@@ -30,6 +31,12 @@ export type SiteSettings = {
   contact_title: string;
   contact_subtitle: string;
   footer_text: string;
+  instagram_url: string;
+  facebook_url: string;
+  tiktok_url: string;
+  footer_address: string;
+  footer_hours: string;
+  show_social_in_footer: boolean;
 };
 
 type Props = {
@@ -45,13 +52,14 @@ const DEFAULTS: SiteSettings = {
   header_announcement: '', about_title: '', about_text: '', about_image: '', custom_title: '', custom_text: '', custom_image_url: '',
   materials_title: '', materials_text: '', materials_image_url: '', payment_title: '', payment_text: '', payment_image_url: '',
   contact_title: '', contact_subtitle: '', footer_text: '',
+  instagram_url: '', facebook_url: '', tiktok_url: '', footer_address: '', footer_hours: '', show_social_in_footer: true,
 };
 
 const normalize = (s: Partial<SiteSettings>): SiteSettings => ({ ...DEFAULTS, ...s });
 
 function Field({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) {
   const cls = 'w-full rounded-lg border border-charcoal/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-wood focus:ring-2 focus:ring-wood/10';
-  return <label className="block"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[.13em] text-charcoal/60">{label}</span>{multiline ? <textarea rows={4} value={value} onChange={e => onChange(e.target.value)} className={cls} /> : <input value={value} onChange={e => onChange(e.target.value)} className={cls} />}</label>;
+  return <label className="block"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[.13em] text-charcoal/60">{label}</span>{multiline ? <textarea rows={4} value={value || ''} onChange={e => onChange(e.target.value)} className={cls} /> : <input value={value || ''} onChange={e => onChange(e.target.value)} className={cls} />}</label>;
 }
 
 export function AdminPanel({ navigate, categories, settings, onSettingsChange, onCategoryAdded }: Props) {
@@ -117,8 +125,6 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
           {(message || error) && <div className={`rounded-xl p-4 text-sm ${error ? 'bg-red-50 text-red-800' : 'bg-emerald-50 text-emerald-800'}`}>{error || message}</div>}
           
           <form onSubmit={save} className="space-y-6">
-            
-            {/* 01. ENCABEZADO Y FOOTER */}
             <SectionCard n="01" title="Encabezado y Footer">
               <div className="space-y-4">
                 <Field label="Texto barra superior (Header Notice)" value={draft.header_announcement} onChange={v => set('header_announcement', v)} />
@@ -130,7 +136,6 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
             
-            {/* 02. HOME / HERO */}
             <SectionCard n="02" title="Home / Hero">
               <div className="space-y-5">
                 <Field label="Título principal" value={draft.hero_title} onChange={v=>set('hero_title',v)}/>
@@ -138,7 +143,6 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
-            {/* 03. A MEDIDA */}
             <SectionCard n="03" title="A medida">
               <div className="space-y-5">
                 <Field label="Título" value={draft.custom_title} onChange={v=>set('custom_title',v)}/>
@@ -147,7 +151,6 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
-            {/* 04. MATERIALES */}
             <SectionCard n="04" title="Materiales">
               <div className="space-y-5">
                 <Field label="Título" value={draft.materials_title} onChange={v=>set('materials_title',v)}/>
@@ -156,7 +159,6 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
-            {/* 05. NOSOTROS */}
             <SectionCard n="05" title="Nosotros">
               <div className="space-y-5">
                 <Field label="Título" value={draft.about_title} onChange={v=>set('about_title',v)}/>
@@ -165,7 +167,6 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
-            {/* 06. MODOS DE PAGO */}
             <SectionCard n="06" title="Modos de Pago">
               <div className="space-y-4">
                 <Field label="Título de la sección" value={draft.payment_title} onChange={v => set('payment_title', v)} />
@@ -177,7 +178,6 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
-            {/* 07. CONTACTO Y FORMULARIO */}
             <SectionCard n="07" title="Contacto y Formulario">
               <div className="space-y-4">
                 <Field label="Título de la sección" value={draft.contact_title} onChange={v => set('contact_title', v)} />
@@ -190,18 +190,41 @@ export function AdminPanel({ navigate, categories, settings, onSettingsChange, o
               </div>
             </SectionCard>
 
+            <SectionCard n="08" title="Redes Sociales y Pie de Página">
+              <div className="space-y-4">
+                <Field label="Link de Instagram" value={draft.instagram_url} onChange={v => set('instagram_url', v)} />
+                <Field label="Link de Facebook" value={draft.facebook_url} onChange={v => set('facebook_url', v)} />
+                <Field label="Link de TikTok" value={draft.tiktok_url} onChange={v => set('tiktok_url', v)} />
+                <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                  <Field label="Dirección / Taller (Footer)" value={draft.footer_address} onChange={v => set('footer_address', v)} />
+                  <Field label="Horarios de atención (Footer)" value={draft.footer_hours} onChange={v => set('footer_hours', v)} />
+                </div>
+                <label className="flex items-center gap-2 pt-2 text-xs font-semibold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={draft.show_social_in_footer}
+                    onChange={e => set('show_social_in_footer', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Mostrar íconos de redes sociales en el Footer
+                </label>
+              </div>
+            </SectionCard>
+
             <button disabled={saving} className="sticky bottom-4 flex w-full items-center justify-center gap-2 rounded-xl bg-charcoal py-4 text-xs font-bold uppercase tracking-wider text-white shadow-xl disabled:opacity-60">
               <Save size={16}/>{saving ? 'Guardando…' : 'Guardar y sincronizar'}
             </button>
           </form>
+
+          <SectionCard n="09" title="Gestión de Opiniones, Pasos y Destacados">
+            <SectionContentManager products={dbProducts} onDataChanged={loadProducts} />
+          </SectionCard>
           
-          {/* GESTIÓN DE PRODUCTOS Y PRECIOS */}
-          <SectionCard n="08" title="Gestión de Muebles y Precios">
+          <SectionCard n="10" title="Gestión de Muebles y Precios">
             <ProductManager products={dbProducts} categories={categories} onProductChanged={loadProducts} />
           </SectionCard>
 
-          {/* GESTIÓN DE CATEGORÍAS */}
-          <SectionCard n="09" title="Categorías">
+          <SectionCard n="11" title="Categorías">
             <div className="flex flex-wrap gap-2">{categories.map(c=><span key={c} className="rounded-full border bg-bone px-3 py-1.5 text-xs font-semibold">{c}</span>)}</div>
             <form onSubmit={addCategory} className="mt-4 flex gap-2">
               <input value={newCategory} onChange={e=>setNewCategory(e.target.value)} placeholder="Nueva categoría" className="flex-1 rounded-lg border p-3 text-sm"/>
