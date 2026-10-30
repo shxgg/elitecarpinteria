@@ -18,6 +18,10 @@ import {
   Truck,
   X,
   ShieldCheck,
+  Instagram,
+  Facebook,
+  MapPin,
+  Clock,
 } from 'lucide-react';
 import { materialSamples, products as initialProducts } from '@/data/products';
 import { AdminPanel } from './components/admin/AdminPanel';
@@ -39,6 +43,8 @@ export default function App() {
   
   const [products, setProducts] = useState<any[]>(initialProducts);
   const [categories, setCategories] = useState<string[]>(['Amoblamientos de cocina', 'Revestimientos', 'Placards', 'Muebles a medida']);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+  const [processSteps, setProcessSteps] = useState<any[]>([]);
   
   const [settings, setSettings] = useState({
     hero_title: 'Diseño de origen para espacios que viven con vos.',
@@ -64,6 +70,12 @@ export default function App() {
     contact_title: 'Hablemos de tu espacio.',
     contact_subtitle: 'Buenos Aires, Argentina.',
     footer_text: 'Elite Carpintería de Origen © 2026. Todos los derechos reservados.',
+    instagram_url: '',
+    facebook_url: '',
+    tiktok_url: '',
+    footer_address: '',
+    footer_hours: '',
+    show_social_in_footer: true,
   });
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
@@ -123,6 +135,7 @@ export default function App() {
         setIsAdminLoggedIn(true);
       }
 
+      // Cargar productos
       const { data: prodData } = await supabase.from('products').select('*');
       if (prodData && prodData.length > 0) {
         const formatted = prodData.map((item: any) => ({
@@ -138,43 +151,37 @@ export default function App() {
           material: 'Melamina / Aglomerado',
           colors: ['Blanco', 'Roble', 'Negro'],
           price: item.price || 0,
+          is_featured: item.is_featured || false,
         }));
         setProducts(formatted);
       }
 
+      // Cargar categorías
       const { data: catData } = await supabase.from('categories').select('*');
       if (catData && catData.length > 0) {
         setCategories(catData.map((c: any) => c.name));
       }
 
+      // Cargar Testimonios
+      const { data: testData } = await supabase.from('testimonials').select('*').order('created_at', { ascending: true });
+      if (testData && testData.length > 0) {
+        setTestimonials(testData);
+      }
+
+      // Cargar Pasos del Proceso
+      const { data: stepData } = await supabase.from('process_steps').select('*').order('order_index', { ascending: true });
+      if (stepData && stepData.length > 0) {
+        setProcessSteps(stepData);
+      }
+
+      // Cargar Configuración del Sitio (Garantizando fusionar TODOS los campos)
       const { data: setmData } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle();
       if (setmData) {
-        setSettings({
-          hero_title: setmData.hero_title || settings.hero_title,
-          hero_image_url: setmData.hero_image_url || settings.hero_image_url,
-          phone: setmData.phone || settings.phone,
-          email: setmData.email || settings.email,
-          whatsapp: setmData.whatsapp || settings.whatsapp,
-          favicon_url: setmData.favicon_url || '/logo.png',
-          logo_url: setmData.logo_url || '/logo.png',
-          header_announcement: setmData.header_announcement || settings.header_announcement,
-          about_title: setmData.about_title || settings.about_title,
-          about_text: setmData.about_text || settings.about_text,
-          about_image: setmData.about_image || settings.about_image,
-          custom_title: setmData.custom_title || settings.custom_title,
-          custom_text: setmData.custom_text || settings.custom_text,
-          custom_image_url: setmData.custom_image_url || settings.custom_image_url,
-          materials_title: setmData.materials_title || settings.materials_title,
-          materials_text: setmData.materials_text || settings.materials_text,
-          materials_image_url: setmData.materials_image_url || settings.materials_image_url,
-          payment_title: setmData.payment_title || settings.payment_title,
-          payment_text: setmData.payment_text || settings.payment_text,
-          payment_image_url: setmData.payment_image_url || settings.payment_image_url,
-          contact_title: setmData.contact_title || settings.contact_title,
-          contact_subtitle: setmData.contact_subtitle || settings.contact_subtitle,
-          footer_text: setmData.footer_text || settings.footer_text,
-        });
-
+        setSettings((prev) => ({
+          ...prev,
+          ...setmData,
+          show_social_in_footer: setmData.show_social_in_footer ?? true,
+        }));
         if (setmData.favicon_url) {
           let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
           if (!link) {
@@ -299,7 +306,7 @@ export default function App() {
       )}
 
       <main>
-        {route === '/' && <Home navigate={navigate} products={products} settings={settings} whatsappLink={whatsappLink} addToCart={addToCart} />}
+        {route === '/' && <Home navigate={navigate} products={products} settings={settings} whatsappLink={whatsappLink} addToCart={addToCart} testimonials={testimonials} processSteps={processSteps} />}
         {route === '/muebles' && <Catalog navigate={navigate} products={products} categories={categories} addToCart={addToCart} />}
         {route.startsWith('/muebles/') && (
           <ProductDetail
@@ -402,7 +409,10 @@ function Header({ menuOpen, setMenuOpen, navigate, whatsappLink, cartCount, onOp
   );
 }
 
-function Home({ navigate, products, settings, whatsappLink, addToCart }: { navigate: (path: string) => void; products: any[]; settings: any; whatsappLink: (msg?: string) => string; addToCart: (product: any) => void }) {
+function Home({ navigate, products, settings, whatsappLink, addToCart, testimonials, processSteps }: { navigate: (path: string) => void; products: any[]; settings: any; whatsappLink: (msg?: string) => string; addToCart: (product: any) => void; testimonials: any[]; processSteps: any[] }) {
+  const featured = products.filter((p) => p.is_featured);
+  const displayProducts = featured.length > 0 ? featured : products.slice(0, 4);
+
   return (
     <>
       <section className="relative min-h-[680px] overflow-hidden bg-charcoal text-white lg:min-h-[calc(100vh-74px)]">
@@ -423,10 +433,10 @@ function Home({ navigate, products, settings, whatsappLink, addToCart }: { navig
         </div>
       </section>
 
-      <FeaturedProducts navigate={navigate} products={products} addToCart={addToCart} />
-      <Process />
+      <FeaturedProducts navigate={navigate} products={displayProducts} addToCart={addToCart} />
+      <Process steps={processSteps} />
       <Benefits />
-      <Testimonials />
+      <Testimonials testimonials={testimonials} />
     </>
   );
 }
@@ -446,7 +456,7 @@ function FeaturedProducts({ navigate, products, addToCart }: { navigate: (path: 
       <div className="mx-auto max-w-[1320px]">
         <SectionHeading eyebrow="01 / Muebles destacados" title={<>Diseñados para <em>quedarse.</em></>} copy="Algunos modelos para inspirarte. Todo se puede adaptar a tus medidas y necesidades." />
         <div className="mt-12 grid gap-x-5 gap-y-14 sm:grid-cols-2 lg:grid-cols-4">
-          {products.slice(0, 4).map((product) => (
+          {products.map((product) => (
             <ProductCard key={product.id} product={product} navigate={navigate} addToCart={addToCart} />
           ))}
         </div>
@@ -488,23 +498,24 @@ function ProductCard({ product, navigate, addToCart }: { product: any; navigate:
   );
 }
 
-function Process() {
-  const steps = [
-    ['01', 'Consulta', 'Nos contás qué necesitás, dónde va y cómo te gustaría que se sienta.'],
-    ['02', 'Diseño y medidas', 'Pensamos la distribución y definimos medidas, material, color y detalles.'],
-    ['03', 'Fabricación', 'Cortamos, canteamos y armamos en nuestro taller con atención en cada terminación.'],
-    ['04', 'Entrega e instalación', 'Coordinamos la entrega y dejamos tu mueble listo para usar.']
+function Process({ steps }: { steps: any[] }) {
+  const defaultSteps = steps.length > 0 ? steps : [
+    { step_number: '01', title: 'Consulta', description: 'Nos contás qué necesitás, dónde va y cómo te gustaría que se sienta.' },
+    { step_number: '02', title: 'Diseño y medidas', description: 'Pensamos la distribución y definimos medidas, material, color y detalles.' },
+    { step_number: '03', title: 'Fabricación', description: 'Cortamos, canteamos y armamos en nuestro taller con atención en cada terminación.' },
+    { step_number: '04', title: 'Entrega e instalación', description: 'Coordinamos la entrega y dejamos tu mueble listo para usar.' }
   ];
+
   return (
     <section className="bg-bone px-5 py-20 lg:px-10 lg:py-28">
       <div className="mx-auto max-w-[1320px]">
         <SectionHeading eyebrow="02 / Cómo trabajamos" title={<>De la idea a tu casa, <em>sin vueltas.</em></>} />
         <div className="mt-14 grid gap-0 border-t border-charcoal/15 md:grid-cols-4">
-          {steps.map(([number, title, copy]) => (
-            <div key={number} className="border-b border-charcoal/15 py-7 md:border-b-0 md:border-r md:px-6 md:first:pl-0 md:last:border-r-0">
-              <span className="font-display text-3xl text-wood">{number}</span>
-              <h3 className="mt-7 font-display text-2xl">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-stone">{copy}</p>
+          {defaultSteps.map((step) => (
+            <div key={step.id || step.step_number} className="border-b border-charcoal/15 py-7 md:border-b-0 md:border-r md:px-6 md:first:pl-0 md:last:border-r-0">
+              <span className="font-display text-3xl text-wood">{step.step_number}</span>
+              <h3 className="mt-7 font-display text-2xl">{step.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-stone">{step.description}</p>
             </div>
           ))}
         </div>
@@ -534,22 +545,23 @@ function Benefits() {
   );
 }
 
-function Testimonials() {
-  const testimonials = [
-    ['“Nos ayudaron a ordenar una cocina complicada y el resultado quedó impecable. Se nota el cuidado en cada detalle.”', 'Lucía M. · Colegiales'],
-    ['“Pedimos un placard con medidas muy específicas y cumplieron con los tiempos y la instalación.”', 'Tomás R. · Vicente López'],
-    ['“El escritorio quedó hermoso y mucho más sólido de lo que esperábamos. La atención fue muy clara.”', 'Sofía G. · La Plata']
+function Testimonials({ testimonials }: { testimonials: any[] }) {
+  const defaultList = testimonials.length > 0 ? testimonials : [
+    { quote: 'Nos ayudaron a ordenar una cocina complicada y el resultado quedó impecable. Se nota el cuidado en cada detalle.', author: 'Lucía M.', location: 'Colegiales' },
+    { quote: 'Pedimos un placard con medidas muy específicas y cumplieron con los tiempos y la instalación.', author: 'Tomás R.', location: 'Vicente López' },
+    { quote: 'El escritorio quedó hermoso y mucho más sólido de lo que esperábamos. La atención fue muy clara.', author: 'Sofía G.', location: 'La Plata' }
   ];
+
   return (
     <section className="bg-bone px-5 py-20 lg:px-10 lg:py-28">
       <div className="mx-auto max-w-[1320px]">
         <SectionHeading eyebrow="03 / Lo que dicen" title={<>Hecho para la vida <em>real.</em></>} />
         <div className="mt-12 grid gap-5 md:grid-cols-3">
-          {testimonials.map(([quote, author]) => (
-            <blockquote key={author} className="border border-charcoal/12 bg-white p-7">
+          {defaultList.map((t, idx) => (
+            <blockquote key={t.id || idx} className="border border-charcoal/12 bg-white p-7">
               <span className="font-display text-4xl text-wood">“</span>
-              <p className="mt-2 font-display text-xl leading-8">{quote.replace(/[“”]/g, '')}</p>
-              <footer className="mt-7 text-[10px] font-bold uppercase tracking-[0.15em] text-stone">{author}</footer>
+              <p className="mt-2 font-display text-xl leading-8">{t.quote}</p>
+              <footer className="mt-7 text-[10px] font-bold uppercase tracking-[0.15em] text-stone">{t.author} {t.location ? `· ${t.location}` : ''}</footer>
             </blockquote>
           ))}
         </div>
@@ -768,7 +780,6 @@ function Contact({ settings, whatsappLink }: { settings: any; whatsappLink: (msg
             <span><strong className="block text-sm uppercase tracking-wider">Email institucional</strong><span className="mt-1 block text-sm text-stone">{settings.email}</span></span>
           </div>
 
-          {/* Modos de pago informados en Contacto o sección dedicada */}
           <div className="border-t border-charcoal/10 pt-6 space-y-3">
             <strong className="block text-sm uppercase tracking-wider text-wood flex items-center gap-2"><ShieldCheck size={18}/> {settings.payment_title || 'Modos de Pago'}</strong>
             <p className="text-xs text-stone leading-relaxed">{settings.payment_text}</p>
@@ -776,7 +787,7 @@ function Contact({ settings, whatsappLink }: { settings: any; whatsappLink: (msg
           </div>
         </div>
 
-        <form onSubmit={submit} className="grid gap-6 bg-bone p-6 sm:p-10 border border-charcoal/1{-10}">
+        <form onSubmit={submit} className="grid gap-6 bg-bone p-6 sm:p-10 border border-charcoal/10">
           <Field label="Nombre" name="name" placeholder="Tu nombre" required />
           <Field label="Mensaje" name="message" placeholder="Escribinos tu consulta..." as="textarea" required />
           <button type="submit" className="button-dark sm:justify-center">{sent ? '¡Enviado!' : 'Enviar mensaje'} <MessageCircle size={16} /></button>
@@ -788,14 +799,45 @@ function Contact({ settings, whatsappLink }: { settings: any; whatsappLink: (msg
 
 function Footer({ navigate, settings }: { navigate: (path: string) => void; settings: any }) {
   return (
-    <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-16 text-white/70 lg:px-10">
-      <div className="mx-auto max-w-[1320px] flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+    <footer className="border-t border-charcoal/10 bg-charcoal px-5 py-12 text-white/70 lg:px-10">
+      <div className="mx-auto max-w-[1320px] flex flex-col md:flex-row justify-between items-center gap-8">
         <div>
           <h3 className="font-display text-xl text-white">Elite Carpintería de Origen</h3>
-          <p className="mt-2 text-xs text-white/50">{settings.phone} · {settings.email}</p>
+          <p className="mt-1 text-xs text-white/50">{settings.phone} · {settings.email}</p>
         </div>
-        <div className="text-xs text-white/40">
-          <p>{settings.footer_text}</p>
+
+        {(settings.footer_address || settings.footer_hours) && (
+          <div className="flex flex-col sm:flex-row gap-4 text-xs text-white/70">
+            {settings.footer_address && (
+              <span className="flex items-center gap-1.5"><MapPin size={14} className="text-wood" /> {settings.footer_address}</span>
+            )}
+            {settings.footer_hours && (
+              <span className="flex items-center gap-1.5"><Clock size={14} className="text-wood" /> {settings.footer_hours}</span>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-6">
+          {settings.show_social_in_footer && (
+            <div className="flex items-center gap-3">
+              {settings.instagram_url && (
+                <a href={settings.instagram_url} target="_blank" rel="noreferrer" title="Instagram" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-wood">
+                  <Instagram size={18} />
+                </a>
+              )}
+              {settings.facebook_url && (
+                <a href={settings.facebook_url} target="_blank" rel="noreferrer" title="Facebook" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-wood">
+                  <Facebook size={18} />
+                </a>
+              )}
+              {settings.tiktok_url && (
+                <a href={settings.tiktok_url} target="_blank" rel="noreferrer" title="TikTok" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-wood">
+                  <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-5.2-1.74 2.89 2.89 0 0 1 2.31-2.22V8.05a6.34 6.34 0 0 0-5.12 6.2 6.34 6.34 0 1 0 11.46-3.83 8.3 8.3 0 0 0 3.77.92V8.12a4.8 4.8 0 0 1-.05-1.43z"/></svg>
+                </a>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-white/40">{settings.footer_text}</p>
         </div>
       </div>
     </footer>
